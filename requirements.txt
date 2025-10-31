@@ -6,7 +6,7 @@ openai
 requests
 pandas
 matplotlib
-langchain
+langchain==0.1.16
 langchain-openai
 pydantic
 qrcode
