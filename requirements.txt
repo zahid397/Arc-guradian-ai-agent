@@ -1,0 +1,13 @@
+streamlit
+streamlit-lottie
+streamlit-mic-recorder
+streamlit-autorefresh
+openai
+requests
+pandas
+matplotlib
+langchain
+langchain-openai
+pydantic
+qrcode
+Pillow
