@@ -520,6 +520,11 @@ if audio:
     with st.spinner("Transcribing your voice..."):
         st.session_state["user_prompt"] = transcribe_audio(audio['bytes'])
         st.experimental_rerun()
+
+user_input = st.session_state["user_prompt"]
+
+if not user_input:
+    user_input = st.text_input("💬 Enter your command manually (e.g. 'Send 10 USDC to 0xABC123')")
       
         with col_text:
             st.text_area(
@@ -807,6 +812,7 @@ st.markdown("<p style='text-align:center; color:gray; font-size:14px;'>Empowerin
 # --- New Footer ---
 st.markdown("---")
 st.caption("Powered by Arc + OpenAI + ElevenLabs | Built by Zahid Hasan 🚀")
+
 
 
 
