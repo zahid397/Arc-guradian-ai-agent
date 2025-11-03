@@ -537,16 +537,8 @@ with col_text:
 if st.button("Analyze Command 🧠", use_container_width=True):     
     def run_analysis():
         user_input = st.session_state["user_prompt"]
-        if not user_input:
-            st.warning("Please enter a command or use the microphone.")
-            return
-        if not OPENAI_API_KEY:
-            st.error("OpenAI API key is not configured.")
-            return
-
-        with st.spinner("🧠 Agent 1 (Parser) is analyzing..."):
-            ai_plan = analyze_command_cached(user_input)             
-    if ai_plan:
+        # ===================== 540–560 FIXED BLOCK =====================
+if ai_plan:
     st.session_state["ai_plan"] = ai_plan
     log_reasoning("Parser", ai_plan.reasoning)
 
@@ -555,9 +547,30 @@ if st.button("Analyze Command 🧠", use_container_width=True):
             with st.spinner("🛡️ Agent 2 (Auditor) is reviewing the plan..."):
                 plan_str = ai_plan.model_dump_json()
                 audit_response_str = analyze_audit_cached(plan_str)
+
                 try:
                     audit_result = json.loads(audit_response_str)
                     st.session_state["audit_result"] = audit_result
+                    log_reasoning("Auditor", audit_result.get("audit_comment", "No comment."))
+                except json.JSONDecodeError:
+                    st.error("Audit Agent response was not valid JSON. Execution halted.")
+                    st.session_state["audit_result"] = {
+                        "audit_result": "REJECTED",
+                        "audit_comment": "Invalid JSON response from auditor."
+                    }
+                except Exception as e:
+                    st.error(f"Audit Agent response error: {e}")
+                    st.session_state["audit_result"] = None
+        else:
+            st.session_state["audit_result"] = {
+                "audit_result": "APPROVED",
+                "audit_comment": "Audit bypassed (simulation mode)"
+            }
+            st.success("✅ Audit bypassed successfully (Simulation Mode).")
+
+        st.subheader("🧠 AI Plan Result")
+        st.json(ai_plan.dict())
+# ===============================================================
                     log_reasoning("Auditor", audit_result.get("audit_comment", "No comment."))
                 except json.JSONDecodeError:
                     st.error("Audit Agent response was not valid JSON. Execution halted.")
@@ -852,6 +865,7 @@ st.markdown("<p style='text-align:center; color:gray; font-size:14px;'>Empowerin
 # --- New Footer ---
 st.markdown("---")
 st.caption("Powered by Arc + OpenAI + ElevenLabs | Built by Zahid Hasan 🚀")
+
 
 
 
