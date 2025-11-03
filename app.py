@@ -545,12 +545,10 @@ if st.button("Analyze Command 🧠", use_container_width=True):
             return
 
         with st.spinner("🧠 Agent 1 (Parser) is analyzing..."):
-            ai_plan = analyze_command_cached(user_input)
-                
-                if ai_plan:
+            ai_plan = analyze_command_cached(user_input)             
+    if ai_plan:
     st.session_state["ai_plan"] = ai_plan
     log_reasoning("Parser", ai_plan.reasoning)
-
     if ai_plan.action == "TRANSACT":
         if st.session_state["enable_audit"]:
             with st.spinner("🛡️ Agent 2 (Auditor) is reviewing the plan..."):
@@ -832,6 +830,7 @@ st.markdown("<p style='text-align:center; color:gray; font-size:14px;'>Empowerin
 # --- New Footer ---
 st.markdown("---")
 st.caption("Powered by Arc + OpenAI + ElevenLabs | Built by Zahid Hasan 🚀")
+
 
 
 
