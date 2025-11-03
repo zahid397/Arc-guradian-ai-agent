@@ -487,7 +487,7 @@ tab1, tab2 = st.tabs(["🤖 New Transaction", "📊 Dashboard & History"])
 # --- Tab 1: New Transaction ---
 with tab1:
     
-    # --- YOUR NEW HACKATHON DEMO BUTTON ---
+    # --- NEW: Hackathon Demo Button ---
     st.markdown("## 🎥 Hackathon Demo Voice")
     if st.button("▶️ Play 30-Second Demo Voice (Judges Start Here)", use_container_width=True, type="primary"):
         demo_script = """
@@ -515,114 +515,61 @@ with tab1:
         with col_mic:
             st.write(" ") 
             audio = mic_recorder(start_prompt="🎙️", stop_prompt="⏹️", key='recorder', use_container_width=True)
-if audio:
-    st.success("🎤 Voice captured! Transcribing...")
-    with st.spinner("Transcribing your voice..."):
-        st.session_state["user_prompt"] = transcribe_audio(audio['bytes'])
-        st.experimental_rerun()
+        
+        if audio:
+            st.success("🎤 Voice captured! Transcribing...")
+            with st.spinner("Transcribing your voice..."):
+                st.session_state["user_prompt"] = transcribe_audio(audio['bytes'])
+                st.experimental_rerun() 
 
-user_input = st.session_state["user_prompt"]
+        with col_text:
+            st.text_area(
+                "Or type your command (e.g., 'Send 10 to 0xabc')",
+                height=100,
+                label_visibility="collapsed",
+                key="user_prompt"
+            )
 
-if not user_input:
-    user_input = st.text_input("💬 Enter your command manually (e.g. 'Send 10 USDC to 0xABC123')")
-      
-with col_text:
-    st.text_area(
-        "Or type your command (e.g., 'Send 10 to 0xabc')",
-        height=100,
-        label_visibility="collapsed",
-        key="user_prompt"
-    )
+        if st.button("Analyze Command 🧠", use_container_width=True):
+            
+            def run_analysis():
+                user_input = st.session_state["user_prompt"]
+                if not user_input:
+                    st.warning("Please enter a command or use the microphone.")
+                    return
+                if not OPENAI_API_KEY:
+                    st.error("OpenAI API key is not configured.")
+                    return
 
-if st.button("Analyze Command 🧠", use_container_width=True):     
-    def run_analysis():
-        user_input = st.session_state["user_prompt"]
-        # ===================== 540–560 FIXED BLOCK =====================
-if ai_plan:
-    st.session_state["ai_plan"] = ai_plan
-    log_reasoning("Parser", ai_plan.reasoning)
-
-    if ai_plan.action == "TRANSACT":
-        if st.session_state["enable_audit"]:
-            with st.spinner("🛡️ Agent 2 (Auditor) is reviewing the plan..."):
-                plan_str = ai_plan.model_dump_json()
-                audit_response_str = analyze_audit_cached(plan_str)
-
-                try:
-                    audit_result = json.loads(audit_response_str)
-                    st.session_state["audit_result"] = audit_result
-                    log_reasoning("Auditor", audit_result.get("audit_comment", "No comment."))
-                except json.JSONDecodeError:
-                    st.error("Audit Agent response was not valid JSON. Execution halted.")
-                    st.session_state["audit_result"] = {
-                        "audit_result": "REJECTED",
-                        "audit_comment": "Invalid JSON response from auditor."
-                    }
-                except Exception as e:
-                    st.error(f"Audit Agent response error: {e}")
-                    st.session_state["audit_result"] = None
-        else:
-            st.session_state["audit_result"] = {
-                "audit_result": "APPROVED",
-                "audit_comment": "Audit bypassed (simulation mode)"
-            }
-            st.success("✅ Audit bypassed successfully (Simulation Mode).")
-
-        st.subheader("🧠 AI Plan Result")
-        st.json(ai_plan.dict())
-# ===============================================================
-            try:
-    audit_result = json.loads(audit_response_str)
-    st.session_state["audit_result"] = audit_result
-    log_reasoning("Auditor", audit_result.get("audit_comment", "No comment."))
-except json.JSONDecodeError:
-    st.error("Audit Agent response was not valid JSON. Execution halted.")
-    st.session_state["audit_result"] = {
-        "audit_result": "REJECTED",
-        "audit_comment": "Invalid JSON response from auditor."
-    }
-except Exception as e:
-    st.error(f"Audit Agent response error: {e}")
-    st.session_state["audit_result"] = None
-        else:
-            st.session_state["audit_result"] = {
-                "audit_result": "APPROVED",
-                "audit_comment": "Audit bypassed (simulation mode)"
-            }
-            st.success("✅ Audit bypassed successfully (Simulation Mode).")
-
-        st.subheader("🧠 AI Plan Result")
-        st.json(ai_plan.dict())
-                try:
-                    audit_result = json.loads(audit_response_str)
-                    st.session_state["audit_result"] = audit_result
-                    log_reasoning("Auditor", audit_result.get("audit_comment", "No comment."))
-                except json.JSONDecodeError:
-                    st.error("Audit Agent response was not valid JSON. Execution halted.")
-                    st.session_state["audit_result"] = {
-                        "audit_result": "REJECTED",
-                        "audit_comment": "Invalid JSON response from auditor."
-                    }
-                except Exception as e:
-                    st.error(f"Audit Agent response error: {e}")
-                    st.session_state["audit_result"] = None
-        else:
-            st.session_state["audit_result"] = {
-                "audit_result": "APPROVED",
-                "audit_comment": "Audit bypassed (simulation mode)"
-            }
-            st.success("✅ Audit bypassed successfully (Simulation Mode).")
-
-        st.subheader("🧠 AI Plan Result")
-        st.json(ai_plan.dict())
-
-    elif ai_plan.action == "CHECK_BALANCE":
-        balance_info = check_balance()
-        st.info(balance_info)
-        play_tts_response(balance_info, key="tts_balance")
-
-    else:
-        st.warning("⚠️ Unknown action. Please provide a valid command.")
+                with st.spinner("🧠 Agent 1 (Parser) is analyzing..."):
+                    ai_plan = analyze_command_cached(user_input)
+                
+                if ai_plan:
+                    st.session_state["ai_plan"] = ai_plan
+                    log_reasoning("Parser", ai_plan.reasoning)
+                    
+                    if ai_plan.action == "TRANSACT":
+                        if st.session_state["enable_audit"]:
+                            with st.spinner("🛡️ Agent 2 (Auditor) is reviewing the plan..."):
+                                plan_str = ai_plan.model_dump_json()
+                                audit_response_str = analyze_audit_cached(plan_str)
+                                
+                                # --- SECURE AUDIT FIX ---
+                                try:
+                                    audit_result = json.loads(audit_response_str)
+                                    st.session_state["audit_result"] = audit_result
+                                    log_reasoning("Auditor", audit_result.get("audit_comment", "No comment."))
+                                except json.JSONDecodeError:
+                                    st.error("Audit Agent response was not valid JSON. Execution halted.")
+                                    st.session_state["audit_result"] = {"audit_result": "REJECTED", "audit_comment": "Invalid JSON response from auditor."}
+                                except Exception as e:
+                                    st.error(f"An unexpected audit error occurred: {e}. Execution halted.")
+                                    st.session_state["audit_result"] = {
+                                        "audit_result": "REJECTED",
+                                        "audit_comment": f"System error during audit: {e}"
+                                    }
+                                # --- END FIX ---
+                        else:
                             st.session_state["audit_result"] = {
                                 "audit_result": "APPROVED",
                                 "audit_comment": "Audit Agent was skipped by user."
@@ -659,7 +606,8 @@ except Exception as e:
                 if audit:
                     audit_status = audit.get("audit_result", "REJECTED")
                     audit_comment = audit.get("audit_comment", "No comment.")
-         if audit_status == "APPROVED":
+                    
+                    if audit_status == "APPROVED":
                         st.success(f"**Audit Status:** ✅ **APPROVED**\n\n*Auditor's Note: {audit_comment}*")
                         tts_text = f"Audit approved. {audit_comment}. Please confirm with your PIN."
                         play_tts_response(tts_text, key="tts_audit_approve")
@@ -705,7 +653,7 @@ except Exception as e:
                 st.error(f"🤖 AI could not process this request. Reason: {plan.reasoning}")
                 tts_text = f"I am sorry, I could not process that request. {plan.reasoning}"
                 play_tts_response(tts_text, key="tts_unknown")
-st.session_state["ai_plan"] = None
+                st.session_state["ai_plan"] = None
                 st.session_state["audit_result"] = None
 
 # --- Tab 2: Dashboard & History ---
@@ -800,7 +748,8 @@ with tab2:
             st.info(f"No transactions found for filter: '{filter_option}'")
         else:
             st.dataframe(df_filtered)
-            csv = df.to_csv(index=False).encode("utf-8")
+
+        csv = df.to_csv(index=False).encode("utf-8")
         st.download_button("⬇️ Export Full History (CSV)", csv, "transactions.csv", "text/csv")
     else:
         st.info("No transactions yet. Make your first transaction in the 'New Transaction' tab.")
@@ -855,7 +804,8 @@ with st.expander("🧠 System Architecture Overview"):
     - **OpenAI Whisper:** Transcribes voice commands into text.
     - **ElevenLabs TTS:** Provides audible voice feedback in multiple languages.
     """)
-    with st.expander("👥 Team Believer Members"):
+
+with st.expander("👥 Team Believer Members"):
     st.write("""
     - **Lead Developer:** Zahid Hasan  
     - **AI Research:** Gemini Pro  
@@ -868,16 +818,3 @@ st.markdown("<p style='text-align:center; color:gray; font-size:14px;'>Empowerin
 # --- New Footer ---
 st.markdown("---")
 st.caption("Powered by Arc + OpenAI + ElevenLabs | Built by Zahid Hasan 🚀")
-
-
-
-
-
-
-
-
-
-
-
-
-
