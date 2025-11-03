@@ -526,25 +526,26 @@ user_input = st.session_state["user_prompt"]
 if not user_input:
     user_input = st.text_input("💬 Enter your command manually (e.g. 'Send 10 USDC to 0xABC123')")
       
-        with col_text:
-            st.text_area(
-                "Or type your command (e.g., 'Send 10 to 0xabc')",
-                height=100,
-                label_visibility="collapsed",
-                key="user_prompt"
-            )
-        if st.button("Analyze Command 🧠", use_container_width=True):     
-            def run_analysis():
-             user_input = st.session_state["user_prompt"]
-               if not user_input:
-                    st.warning("Please enter a command or use the microphone.")
-                    return
-                if not OPENAI_API_KEY:
-                    st.error("OpenAI API key is not configured.")
-                    return
+with col_text:
+    st.text_area(
+        "Or type your command (e.g., 'Send 10 to 0xabc')",
+        height=100,
+        label_visibility="collapsed",
+        key="user_prompt"
+    )
 
-                with st.spinner("🧠 Agent 1 (Parser) is analyzing..."):
-                    ai_plan = analyze_command_cached(user_input)
+if st.button("Analyze Command 🧠", use_container_width=True):     
+    def run_analysis():
+        user_input = st.session_state["user_prompt"]
+        if not user_input:
+            st.warning("Please enter a command or use the microphone.")
+            return
+        if not OPENAI_API_KEY:
+            st.error("OpenAI API key is not configured.")
+            return
+
+        with st.spinner("🧠 Agent 1 (Parser) is analyzing..."):
+            ai_plan = analyze_command_cached(user_input)
                 
                 if ai_plan:
                     st.session_state["ai_plan"] = ai_plan
@@ -812,6 +813,7 @@ st.markdown("<p style='text-align:center; color:gray; font-size:14px;'>Empowerin
 # --- New Footer ---
 st.markdown("---")
 st.caption("Powered by Arc + OpenAI + ElevenLabs | Built by Zahid Hasan 🚀")
+
 
 
 
