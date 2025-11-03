@@ -531,6 +531,7 @@ if audio:
         if st.button("Analyze Command 🧠", use_container_width=True):     
             def run_analysis():
              user_input = st.session_state["user_prompt"]
+              
                 if not user_input:
                     st.warning("Please enter a command or use the microphone.")
                     return
@@ -807,6 +808,7 @@ st.markdown("<p style='text-align:center; color:gray; font-size:14px;'>Empowerin
 # --- New Footer ---
 st.markdown("---")
 st.caption("Powered by Arc + OpenAI + ElevenLabs | Built by Zahid Hasan 🚀")
+
 
 
 
