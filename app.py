@@ -549,12 +549,34 @@ if st.button("Analyze Command 🧠", use_container_width=True):
     if ai_plan:
     st.session_state["ai_plan"] = ai_plan
     log_reasoning("Parser", ai_plan.reasoning)
+
     if ai_plan.action == "TRANSACT":
         if st.session_state["enable_audit"]:
             with st.spinner("🛡️ Agent 2 (Auditor) is reviewing the plan..."):
                 plan_str = ai_plan.model_dump_json()
                 audit_response_str = analyze_audit_cached(plan_str)
+                try:
+                    audit_result = json.loads(audit_response_str)
+                    st.session_state["audit_result"] = audit_result
+                    log_reasoning("Auditor", audit_result.get("audit_comment", "No comment."))
+                except json.JSONDecodeError:
+                    st.error("Audit Agent response was not valid JSON. Execution halted.")
+                    st.session_state["audit_result"] = {
+                        "audit_result": "REJECTED",
+                        "audit_comment": "Invalid JSON response from auditor."
+                    }
+                except Exception as e:
+                    st.error(f"Audit Agent response error: {e}")
+                    st.session_state["audit_result"] = None
+        else:
+            st.session_state["audit_result"] = {
+                "audit_result": "APPROVED",
+                "audit_comment": "Audit bypassed (simulation mode)"
+            }
+            st.success("✅ Audit bypassed successfully (Simulation Mode).")
 
+        st.subheader("🧠 AI Plan Result")
+        st.json(ai_plan.dict())
                 try:
                     audit_result = json.loads(audit_response_str)
                     st.session_state["audit_result"] = audit_result
@@ -830,6 +852,7 @@ st.markdown("<p style='text-align:center; color:gray; font-size:14px;'>Empowerin
 # --- New Footer ---
 st.markdown("---")
 st.caption("Powered by Arc + OpenAI + ElevenLabs | Built by Zahid Hasan 🚀")
+
 
 
 
