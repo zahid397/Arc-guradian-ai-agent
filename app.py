@@ -515,12 +515,11 @@ with tab1:
         with col_mic:
             st.write(" ") 
             audio = mic_recorder(start_prompt="🎙️", stop_prompt="⏹️", key='recorder', use_container_width=True)
-    if audio:
+if audio:
     st.success("🎤 Voice captured! Transcribing...")
     with st.spinner("Transcribing your voice..."):
         st.session_state["user_prompt"] = transcribe_audio(audio['bytes'])
         st.experimental_rerun()
-
         with col_text:
             st.text_area(
                 "Or type your command (e.g., 'Send 10 to 0xabc')",
@@ -528,10 +527,8 @@ with tab1:
                 label_visibility="collapsed",
                 key="user_prompt"
             )
-
         if st.button("Analyze Command 🧠", use_container_width=True):
-            
-            def run_analysis():
+                 def run_analysis():
                 user_input = st.session_state["user_prompt"]
                 if not user_input:
                     st.warning("Please enter a command or use the microphone.")
@@ -809,5 +806,6 @@ st.markdown("<p style='text-align:center; color:gray; font-size:14px;'>Empowerin
 # --- New Footer ---
 st.markdown("---")
 st.caption("Powered by Arc + OpenAI + ElevenLabs | Built by Zahid Hasan 🚀")
+
 
 
