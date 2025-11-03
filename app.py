@@ -571,16 +571,19 @@ if ai_plan:
         st.subheader("🧠 AI Plan Result")
         st.json(ai_plan.dict())
 # ===============================================================
-                    log_reasoning("Auditor", audit_result.get("audit_comment", "No comment."))
-                except json.JSONDecodeError:
-                    st.error("Audit Agent response was not valid JSON. Execution halted.")
-                    st.session_state["audit_result"] = {
-                        "audit_result": "REJECTED",
-                        "audit_comment": "Invalid JSON response from auditor."
-                    }
-                except Exception as e:
-                    st.error(f"Audit Agent response error: {e}")
-                    st.session_state["audit_result"] = None
+            try:
+    audit_result = json.loads(audit_response_str)
+    st.session_state["audit_result"] = audit_result
+    log_reasoning("Auditor", audit_result.get("audit_comment", "No comment."))
+except json.JSONDecodeError:
+    st.error("Audit Agent response was not valid JSON. Execution halted.")
+    st.session_state["audit_result"] = {
+        "audit_result": "REJECTED",
+        "audit_comment": "Invalid JSON response from auditor."
+    }
+except Exception as e:
+    st.error(f"Audit Agent response error: {e}")
+    st.session_state["audit_result"] = None
         else:
             st.session_state["audit_result"] = {
                 "audit_result": "APPROVED",
@@ -865,6 +868,7 @@ st.markdown("<p style='text-align:center; color:gray; font-size:14px;'>Empowerin
 # --- New Footer ---
 st.markdown("---")
 st.caption("Powered by Arc + OpenAI + ElevenLabs | Built by Zahid Hasan 🚀")
+
 
 
 
