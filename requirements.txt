@@ -1,24 +1,15 @@
-# Core Framework
 streamlit==1.39.0
-
-# Networking & Utils
 requests==2.31.0
 pandas==2.2.2
 matplotlib==3.9.2
-qrcode==7.4.2
-Pillow==10.4.0
-
-# LangChain & AI Integration
-langchain==0.2.11
-langchain-core==0.2.28
-langchain-openai==0.1.16
-openai==1.51.0
-pydantic==2.8.2
-
-# ElevenLabs Voice API
-elevenlabs==1.4.1
-
-# Streamlit Addons
+langchain==0.0.331
+langchain-core==0.1.20
+langchain-openai==0.0.5
+pydantic==1.10.13
 streamlit-lottie==0.0.5
 streamlit-mic-recorder==0.0.3
+openai==1.42.0
 streamlit-autorefresh==1.0.1
+qrcode==7.4.2
+Pillow==10.3.0
+elevenlabs==1.9.0
