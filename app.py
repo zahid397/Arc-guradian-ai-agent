@@ -516,10 +516,10 @@ with tab1:
             st.write(" ") 
             audio = mic_recorder(start_prompt="🎙️", stop_prompt="⏹️", key='recorder', use_container_width=True)
             if audio:
-            st.success("🎤 Voice captured! Transcribing...")
-            with st.spinner("Transcribing your voice..."):
-                st.session_state["user_prompt"] = transcribe_audio(audio['bytes'])
-                st.experimental_rerun() 
+    st.success("🎤 Voice captured! Transcribing...")
+    with st.spinner("Transcribing your voice..."):
+        st.session_state["user_prompt"] = transcribe_audio(audio['bytes'])
+        st.experimental_rerun()
 
         with col_text:
             st.text_area(
@@ -809,3 +809,4 @@ st.markdown("<p style='text-align:center; color:gray; font-size:14px;'>Empowerin
 # --- New Footer ---
 st.markdown("---")
 st.caption("Powered by Arc + OpenAI + ElevenLabs | Built by Zahid Hasan 🚀")
+
