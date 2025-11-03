@@ -36,8 +36,12 @@ from langchain.chains import LLMChain
 import qrcode
 from PIL import Image
 
-# ElevenLabs
-from elevenlabs import generate
+# --- ELEVENLABS v1.0.0+ FIX ---
+# We now import the main client
+from elevenlabs.client import ElevenLabs
+# We no longer import 'generate' from the top level
+# --- END FIX ---
+
 
 # ---------------- CONFIG ----------------
 st.set_option('client.showErrorDetails', False)
@@ -111,9 +115,22 @@ def get_llm():
         llm = ChatOpenAI(model="gpt-3.5-turbo", api_key=OPENAI_API_KEY)
         return llm
 
+@st.cache_resource
+def get_elevenlabs_client():
+    """Initializes the ElevenLabs client."""
+    if not ELEVENLABS_API_KEY:
+        st.warning("🔑 ElevenLabs API key missing in secrets.toml.")
+        return None
+    try:
+        return ElevenLabs(api_key=ELEVENLABS_API_KEY)
+    except Exception as e:
+        st.error(f"Failed to initialize ElevenLabs client: {e}")
+        return None
+
 try:
     llm = get_llm()
-    client = openai.OpenAI(api_key=OPENAI_API_KEY)
+    openai_client = openai.OpenAI(api_key=OPENAI_API_KEY)
+    eleven_client = get_elevenlabs_client() # Get the cached client
 except Exception as e:
     st.error(f"API Key setup error: {e}")
     st.stop()
@@ -124,17 +141,20 @@ except Exception as e:
 @st.cache_data
 def generate_tts(text: str, voice_name="Adam"):
     """Generate AI voice using ElevenLabs and return bytes."""
-    if not ELEVENLABS_API_KEY:
-        st.warning("🔑 ElevenLabs API key missing in secrets.toml.")
+    if not eleven_client:
         return None
     try:
-        audio_bytes = generate(
+        # --- ELEVENLABS v1.0.0+ FIX ---
+        # The new client.generate() returns an iterator of bytes (a stream)
+        audio_stream = eleven_client.generate(
             text=text,
             voice=voice_name,
-            model="eleven_multilingual_v2",
-            api_key=ELEVENLABS_API_KEY
+            model="eleven_multilingual_v2"
         )
+        # We must collect the bytes from the stream
+        audio_bytes = b"".join([chunk for chunk in audio_stream])
         return audio_bytes
+        # --- END FIX ---
             
     except Exception as e:
         st.error(f"TTS Generation failed: {e}")
@@ -142,7 +162,6 @@ def generate_tts(text: str, voice_name="Adam"):
 
 def play_tts_response(text, key="tts_playback", voice_override=None):
     """Generates and plays audio in the browser via st.audio."""
-    # Use override if provided (for demo button), else use session state
     selected_voice = voice_override if voice_override else st.session_state.get("selected_voice", "Adam")
     
     with st.spinner(f"🎧 Generating AI voice ({selected_voice})..."):
@@ -265,7 +284,7 @@ def transcribe_audio(audio_bytes):
     try:
         audio_file = io.BytesIO(audio_bytes)
         audio_file.name = "recording.wav"
-        transcript_response = client.audio.transcriptions.create(
+        transcript_response = openai_client.audio.transcriptions.create(
             model="whisper-1",
             file=audio_file
         )
@@ -487,7 +506,6 @@ tab1, tab2 = st.tabs(["🤖 New Transaction", "📊 Dashboard & History"])
 # --- Tab 1: New Transaction ---
 with tab1:
     
-    # --- NEW: Hackathon Demo Button ---
     st.markdown("## 🎥 Hackathon Demo Voice")
     if st.button("▶️ Play 30-Second Demo Voice (Judges Start Here)", use_container_width=True, type="primary"):
         demo_script = """
@@ -502,9 +520,7 @@ with tab1:
 
         This is the future of AI-driven payments, built on Arc.
         """
-        # Force "Adam" voice for this specific demo, as requested
         play_tts_response(demo_script, key="hackathon_voice", voice_override="Adam")
-    # --- End of new code ---
     
     st.markdown("---") # Add a divider
 
