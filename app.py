@@ -62,7 +62,32 @@ ELEVENLABS_API_KEY = st.secrets.get("elevenlabs", {}).get("api_key")
 # ------------------------------------------------------------
 st.markdown("""
     <style>
-    /* ... (CSS কোড অপরিবর্তিত) ... */
+    /* Gradient buttons */
+    div[data-testid="stButton"] > button[kind="primary"],
+    div[data-testid="stButton"] > button[kind="secondary"] {
+        background: linear-gradient(90deg, #00bcd4, #00e5ff);
+        color: #000000;
+        border: none;
+        font-weight: bold;
+        transition: all 0.3s ease-in-out;
+    }
+    div[data-testid="stButton"] > button[kind="primary"]:hover {
+        box-shadow: 0 0 15px 5px #00bcd4;
+        transform: scale(1.02);
+    }
+    div[data-testid="stButton"] > button[kind="secondary"]:hover {
+        opacity: 0.8;
+    }
+    /* Glowing sidebar */
+    [data-testid="stSidebar"] {
+        border-right: 2px solid #00bcd4;
+        box-shadow: 0 0 15px 5px #00bcd4;
+        animation: pulse 2.5s infinite alternate;
+    }
+    @keyframes pulse {
+        from { box-shadow: 0 0 10px 2px #00bcd4; }
+        to { box-shadow: 0 0 20px 7px #00e5ff; }
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -403,7 +428,7 @@ with st.sidebar:
 
     st.header("🧭 Control Center")
     
-    st.markdown("[🎥 Watch Demo](http.googleusercontent.com/youtube/com/2)")
+    st.markdown("[🎥 Watch Demo](http://googleusercontent.com/youtube/com/2)")
     st.info("API keys loaded from `.streamlit/secrets.toml`")
     
     if not OPENAI_API_KEY: st.error("OpenAI API Key not found.")
