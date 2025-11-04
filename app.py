@@ -6,14 +6,11 @@ import matplotlib.pyplot as plt
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import PromptTemplate
 
-# LangChain Version-Compatibility Fix
+# LangChain ভার্সন সামঞ্জস্যপূর্ণ করার ফিক্স
 try:
     from langchain.output_parsers import PydanticOutputParser
 except ImportError:
     from langchain_core.output_parsers import PydanticOutputParser
-
-# --- NEW: Import for StrOutputParser (for Audit Agent) ---
-from langchain_core.output_parsers import StrOutputParser
 
 from pydantic import BaseModel, Field
 from typing import List
@@ -21,33 +18,34 @@ import random
 import time
 import json
 import io
-import base64 # For audio playback
-import traceback # For Global Exception UI
+import base64 # অডিও প্লেব্যাকের জন্য
+import traceback # গ্লোবাল এক্সেপশন UI-এর জন্য
 
 # Lottie, Mic Recorder, OpenAI (Whisper)
 from streamlit_lottie import st_lottie
 from streamlit_mic_recorder import mic_recorder
 import openai
 
-# Auto-Refresh
+# অটো-রিফ্রেশ
 from streamlit_autorefresh import st_autorefresh
+
+# মাল্টি-এজেন্ট সিস্টেমের জন্য
+from langchain.chains import LLMChain
 
 # QR Code
 import qrcode
 from PIL import Image
 
-# --- ELEVENLABS SDK V2 FIX ---
+# ElevenLabs
 from elevenlabs import ElevenLabs
-# --- END FIX ---
 
 # ---------------- CONFIG ----------------
-# --- FIX: Removed deprecated option ---
 st.set_option('client.showErrorDetails', False)
-# st.set_option('deprecation.showfileUploaderEncoding', False) # <-- This line caused the crash and is now REMOVED.
+st.set_option('deprecation.showfileUploaderEncoding', False)
 
 st.set_page_config(
     page_title="Arc Guardian AI Agent | Team Believer",
-    page_icon="assets/favicon.png", # Asset path
+    page_icon="assets/favicon.png", # অ্যাসেট পাথ
     layout="wide"
 )
 
@@ -63,32 +61,7 @@ ELEVENLABS_API_KEY = st.secrets.get("elevenlabs", {}).get("api_key")
 # ------------------------------------------------------------
 st.markdown("""
     <style>
-    /* Gradient buttons */
-    div[data-testid="stButton"] > button[kind="primary"],
-    div[data-testid="stButton"] > button[kind="secondary"] {
-        background: linear-gradient(90deg, #00bcd4, #00e5ff);
-        color: #000000;
-        border: none;
-        font-weight: bold;
-        transition: all 0.3s ease-in-out;
-    }
-    div[data-testid="stButton"] > button[kind="primary"]:hover {
-        box-shadow: 0 0 15px 5px #00bcd4;
-        transform: scale(1.02);
-    }
-    div[data-testid="stButton"] > button[kind="secondary"]:hover {
-        opacity: 0.8;
-    }
-    /* Glowing sidebar */
-    [data-testid="stSidebar"] {
-        border-right: 2px solid #00bcd4;
-        box-shadow: 0 0 15px 5px #00bcd4;
-        animation: pulse 2.5s infinite alternate;
-    }
-    @keyframes pulse {
-        from { box-shadow: 0 0 10px 2px #00bcd4; }
-        to { box-shadow: 0 0 20px 7px #00e5ff; }
-    }
+    /* ... (CSS কোড অপরিবর্তিত) ... */
     </style>
     """, unsafe_allow_html=True)
 
@@ -98,7 +71,7 @@ st.markdown("""
 # ------------------------------------------------------------
 @st.cache_resource
 def get_llm():
-    """Initializes the LLM with a fallback."""
+    """LLM রিসোর্স ক্যাশ করে (ফলব্যাক সহ)।"""
     try:
         llm = ChatOpenAI(model="gpt-4o-mini", api_key=OPENAI_API_KEY)
         return llm
@@ -109,7 +82,7 @@ def get_llm():
 
 @st.cache_resource
 def get_elevenlabs_client():
-    """Initializes the ElevenLabs client."""
+    """ElevenLabs ক্লায়েন্ট ক্যাশ করে।"""
     if not ELEVENLABS_API_KEY:
         st.warning("🔑 ElevenLabs API key missing in secrets.toml. Voice will be disabled.")
         return None
@@ -118,28 +91,26 @@ def get_elevenlabs_client():
 try:
     llm = get_llm()
     client = openai.OpenAI(api_key=OPENAI_API_KEY)
-    eleven_client = get_elevenlabs_client() # Initialize new client
+    eleven_client = get_elevenlabs_client() # নতুন ক্লায়েন্ট লোড করা
 except Exception as e:
     st.error(f"API Key setup error: {e}")
     st.stop()
 
 # ------------------------------------------------------------
-# 🔊 TTS HELPER FUNCTION (SDK v2)
+# 🔊 TTS HELPER FUNCTION (SDK v2 ফিক্সড)
 # ------------------------------------------------------------
 @st.cache_data
 def generate_tts(text: str, voice_name="Adam"):
-    """Generate AI voice using ElevenLabs and return bytes."""
+    """ElevenLabs ব্যবহার করে ভয়েস জেনারেট করে এবং বাইটস রিটার্ন করে।"""
     if not eleven_client: 
         st.warning("🔑 ElevenLabs client not available. Skipping TTS.")
         return None
     try:
-        # Use the new client.text_to_speech.convert() method
         audio_bytes_iterator = eleven_client.text_to_speech.convert(
             voice_id=voice_name.lower(),  
             model_id="eleven_multilingual_v2",
             text=text
         )
-        # Combine the audio chunks into single bytes
         audio_bytes = b"".join([chunk for chunk in audio_bytes_iterator])
         return audio_bytes
             
@@ -148,7 +119,7 @@ def generate_tts(text: str, voice_name="Adam"):
         return None
 
 def play_tts_response(text, key="tts_playback", voice_override=None):
-    """Generates and plays audio in the browser via st.audio."""
+    """জেনারেট করা অডিও বাইটকে st.audio দিয়ে প্লে করে।"""
     selected_voice = voice_override if voice_override else st.session_state.get("selected_voice", "Adam")
     
     with st.spinner(f"🎧 Generating AI voice ({selected_voice})..."):
@@ -224,7 +195,6 @@ try:
         """,  
         input_variables=["plan_string"]  
     )  
-    # FIX: Use modern LCEL syntax instead of deprecated LLMChain
     audit_output_parser = StrOutputParser()
     chain_auditor = auditor_prompt | llm | audit_output_parser
 except Exception as e:
@@ -282,6 +252,15 @@ def transcribe_audio(audio_bytes):
         st.error(f"Voice transcription failed: {e}")
         return ""
 
+def load_lottiefile(filepath: str):
+    """Loads Lottie file (warns if not found)."""
+    try:
+        with open(filepath, "r") as f:
+            return json.load(f)
+    except FileNotFoundError:
+        st.warning(f"Lottie file not found at: {filepath}")
+        return None
+
 def load_lottieurl(url):
     """Loads Lottie animation directly from the web."""
     r = requests.get(url)
@@ -330,8 +309,9 @@ def analyze_audit_cached(plan_string):
         st.error(f"AI Audit Error: {e}")
         return None
 
-# --- Asset Loading ---
-success_anim = load_lottieurl("https://assets9.lottiefiles.com/packages/lf20_SGlS1I.json")
+# --- অ্যাসেট লোডিং ---
+# ফিক্স: লোকাল ফাইল পাথ ব্যবহার করা
+success_anim = load_lottiefile("assets/success.json")
 APP_URL = "https.arc-guardian.streamlit.app" 
 
 def execute_transactions(transactions: List[Transaction]):
@@ -410,11 +390,13 @@ with st.sidebar:
     except FileNotFoundError:
         st.warning("assets/team_logo.png not found.")
     
-    lottie_ai_brain = load_lottieurl("https://assets3.lottiefiles.com/packages/lf20_842MIj3SPe.json")
+    # --- ফিক্স: লোকাল ফাইল পাথ ব্যবহার করা ---
+    lottie_ai_brain = load_lottiefile("assets/ai_brain.json")
     if lottie_ai_brain:
         st_lottie(lottie_ai_brain, height=150, key="ai_brain_anim", speed=1)
     else:
-        st.warning("⚠️ Animation could not load (Check Internet Connection).")
+        st.warning("assets/ai_brain.json Lottie file not found.")
+    # --- ফিক্স শেষ ---
 
     st.header("🧭 Control Center")
     
@@ -557,7 +539,6 @@ with tab1:
                                 plan_str = ai_plan.model_dump_json()
                                 audit_response_str = analyze_audit_cached(plan_str)
                                 
-                                # --- SECURE AUDIT FIX ---
                                 try:
                                     audit_result = json.loads(audit_response_str)
                                     st.session_state["audit_result"] = audit_result
@@ -571,7 +552,6 @@ with tab1:
                                         "audit_result": "REJECTED",
                                         "audit_comment": f"System error during audit: {e}"
                                     }
-                                # --- END FIX ---
                         else:
                             st.session_state["audit_result"] = {
                                 "audit_result": "APPROVED",
