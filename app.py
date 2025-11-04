@@ -29,10 +29,16 @@ import openai
 # অটো-রিফ্রেশ
 from streamlit_autorefresh import st_autorefresh
 
+# ✅ Compatible Import Fix for Streamlit Cloud
 try:
-    from langchain_core.chains import LLMChain  # নতুন ভার্সন (LangChain Core compatible)
+    from langchain_core.chains import LLMChain
 except ModuleNotFoundError:
-    from langchain.chains import LLMChain  # fallback for older or Streamlit Cloud builds
+    try:
+        from langchain.chains import LLMChain
+    except ModuleNotFoundError:
+        import warnings
+        warnings.warn("⚠️ LLMChain not found in both langchain_core and langchain.")
+        LLMChain = None
 
 # QR Code
 import qrcode
@@ -833,6 +839,7 @@ st.markdown("<p style='text-align:center; color:gray; font-size:14px;'>Empowerin
 # --- New Footer ---
 st.markdown("---")
 st.caption("Powered by Arc + OpenAI + ElevenLabs | Built by Zahid Hasan 🚀")
+
 
 
 
