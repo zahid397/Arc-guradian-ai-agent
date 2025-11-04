@@ -49,12 +49,9 @@ from elevenlabs import ElevenLabs
 # --- ফিক্স শেষ ---
 
 # ---------------- CONFIG ----------------
-st.set_option('client.showErrorDetails', False)
-st.set_option('deprecation.showfileUploaderEncoding', False)
-
 st.set_page_config(
     page_title="Arc Guardian AI Agent | Team Believer",
-    page_icon="assets/favicon.png", # অ্যাসেট পাথ
+    page_icon="assets/favicon.png",
     layout="wide"
 )
 
@@ -839,6 +836,7 @@ st.markdown("<p style='text-align:center; color:gray; font-size:14px;'>Empowerin
 # --- New Footer ---
 st.markdown("---")
 st.caption("Powered by Arc + OpenAI + ElevenLabs | Built by Zahid Hasan 🚀")
+
 
 
 
