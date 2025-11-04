@@ -29,8 +29,10 @@ import openai
 # অটো-রিফ্রেশ
 from streamlit_autorefresh import st_autorefresh
 
-# মাল্টি-এজেন্ট সিস্টেমের জন্য
-from langchain.chains import LLMChain
+try:
+    from langchain.chains import LLMChain  # পুরনো ভার্সন (লোকাল সাপোর্টের জন্য)
+except ModuleNotFoundError:
+    from langchain_core.chains import LLMChain  # নতুন ভার্সন (Streamlit Cloud সাপোর্টের জন্য)
 
 # QR Code
 import qrcode
@@ -831,3 +833,4 @@ st.markdown("<p style='text-align:center; color:gray; font-size:14px;'>Empowerin
 # --- New Footer ---
 st.markdown("---")
 st.caption("Powered by Arc + OpenAI + ElevenLabs | Built by Zahid Hasan 🚀")
+
