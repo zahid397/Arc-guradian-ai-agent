@@ -36,8 +36,9 @@ from langchain.chains import LLMChain
 import qrcode
 from PIL import Image
 
-# ElevenLabs
-from elevenlabs import generate
+# --- ELEVENLABS SDK V2 FIX ---
+from elevenlabs import ElevenLabs
+# --- END FIX ---
 
 # ---------------- CONFIG ----------------
 st.set_option('client.showErrorDetails', False)
@@ -45,7 +46,7 @@ st.set_option('deprecation.showfileUploaderEncoding', False)
 
 st.set_page_config(
     page_title="Arc Guardian AI Agent | Team Believer",
-    page_icon="assets/favicon.png", # Asset path (favicon must be local)
+    page_icon="assets/favicon.png", # Asset path
     layout="wide"
 )
 
@@ -105,30 +106,44 @@ def get_llm():
         llm = ChatOpenAI(model="gpt-3.5-turbo", api_key=OPENAI_API_KEY)
         return llm
 
+# --- ELEVENLABS SDK V2 FIX ---
+@st.cache_resource
+def get_elevenlabs_client():
+    """Initializes the ElevenLabs client."""
+    if not ELEVENLABS_API_KEY:
+        st.warning("🔑 ElevenLabs API key missing in secrets.toml. Voice will be disabled.")
+        return None
+    return ElevenLabs(api_key=ELEVENLABS_API_KEY)
+# --- END FIX ---
+
 try:
     llm = get_llm()
     client = openai.OpenAI(api_key=OPENAI_API_KEY)
+    eleven_client = get_elevenlabs_client() # Initialize the new client
 except Exception as e:
     st.error(f"API Key setup error: {e}")
     st.stop()
 
 # ------------------------------------------------------------
-# 🔊 TTS & LOTTIE HELPER FUNCTIONS (Optimized)
+# 🔊 TTS HELPER FUNCTION (Optimized)
 # ------------------------------------------------------------
 @st.cache_data
 def generate_tts(text: str, voice_name="Adam"):
     """Generate AI voice using ElevenLabs and return bytes."""
-    if not ELEVENLABS_API_KEY:
-        st.warning("🔑 ElevenLabs API key missing in secrets.toml.")
+    if not eleven_client: # Check if client initialized
+        st.warning("🔑 ElevenLabs client not available. Skipping TTS.")
         return None
     try:
-        audio_bytes = generate(
-            text=text,
-            voice=voice_name,
-            model="eleven_multilingual_v2",
-            api_key=ELEVENLABS_API_KEY
+        # --- ELEVENLABS SDK V2 FIX ---
+        # Use the new client.text_to_speech.convert() method
+        audio_bytes = eleven_client.text_to_speech.convert(
+            voice_id=voice_name.lower(),  # Use the name (Adam, Domi, etc.)
+            model_id="eleven_multilingual_v2",
+            text=text
         )
+        # The result of convert() is already bytes
         return audio_bytes
+        # --- END FIX ---
             
     except Exception as e:
         st.error(f"TTS Generation failed: {e}")
@@ -151,15 +166,6 @@ def play_tts_response(text, key="tts_playback", voice_override=None):
         st.markdown(audio_html, unsafe_allow_html=True)
     else:
         st.info("TTS unavailable – check API key or cloud environment.")
-
-# --- NEW: Load Lottie Animation from URL ---
-def load_lottieurl(url):
-    """Loads Lottie animation directly from the web."""
-    r = requests.get(url)
-    if r.status_code != 200:
-        return None
-    return r.json()
-# --- End of new code ---
 
 # ============================================================
 # 🧠 ARC GUARDIAN — PART B: AGENTS SETUP
@@ -275,6 +281,24 @@ def transcribe_audio(audio_bytes):
     except Exception as e:
         st.error(f"Voice transcription failed: {e}")
         return ""
+
+def load_lottiefile(filepath: str):
+    """Loads Lottie file (warns if not found)."""
+    try:
+        with open(filepath, "r") as f:
+            return json.load(f)
+    except FileNotFoundError:
+        st.warning(f"Lottie file not found at: {filepath}")
+        return None
+
+# --- NEW: Load Lottie Animation from URL ---
+def load_lottieurl(url):
+    """Loads Lottie animation directly from the web."""
+    r = requests.get(url)
+    if r.status_code != 200:
+        return None
+    return r.json()
+# --- End of new code ---
 
 def check_balance():
     """Simulates a dynamic mock balance."""
@@ -397,13 +421,11 @@ with st.sidebar:
     except FileNotFoundError:
         st.warning("assets/team_logo.png not found.")
     
-    # --- NEW: Load AI Brain Animation from URL ---
     lottie_ai_brain = load_lottieurl("https://assets3.lottiefiles.com/packages/lf20_842MIj3SPe.json")
     if lottie_ai_brain:
         st_lottie(lottie_ai_brain, height=150, key="ai_brain_anim", speed=1)
     else:
         st.warning("⚠️ Animation could not load (Check Internet Connection).")
-    # --- End of new code ---
 
     st.header("🧭 Control Center")
     
@@ -546,6 +568,7 @@ with tab1:
                                 plan_str = ai_plan.model_dump_json()
                                 audit_response_str = analyze_audit_cached(plan_str)
                                 
+                                # --- SECURE AUDIT FIX ---
                                 try:
                                     audit_result = json.loads(audit_response_str)
                                     st.session_state["audit_result"] = audit_result
@@ -559,6 +582,7 @@ with tab1:
                                         "audit_result": "REJECTED",
                                         "audit_comment": f"System error during audit: {e}"
                                     }
+                                # --- END FIX ---
                         else:
                             st.session_state["audit_result"] = {
                                 "audit_result": "APPROVED",
