@@ -12,6 +12,7 @@ try:
 except ImportError:
     from langchain_core.output_parsers import PydanticOutputParser
 
+from langchain_core.output_parsers import StrOutputParser
 from pydantic import BaseModel, Field
 from typing import List
 import random
@@ -22,7 +23,7 @@ import base64 # অডিও প্লেব্যাকের জন্য
 import traceback # গ্লোবাল এক্সেপশন UI-এর জন্য
 
 # Lottie, Mic Recorder, OpenAI (Whisper)
-from streamlit_lottie import st_lottie
+from streamlit_lottie import st_lottie # success_anim এর জন্য এটি এখনও দরকার
 from streamlit_mic_recorder import mic_recorder
 import openai
 
@@ -37,11 +38,15 @@ import qrcode
 from PIL import Image
 
 # ElevenLabs
-from elevenlabs import ElevenLabs
+try:
+    from elevenlabs import ElevenLabs
+except ImportError:
+    st.error("❌ ElevenLabs library missing. Please add `elevenlabs` in requirements.txt")
+    st.stop()
 
 # ---------------- CONFIG ----------------
 st.set_option('client.showErrorDetails', False)
-st.set_option('deprecation.showfileUploaderEncoding', False)
+# st.set_option('deprecation.showfileUploaderEncoding', False) # Deprecated
 
 st.set_page_config(
     page_title="Arc Guardian AI Agent | Team Believer",
@@ -252,15 +257,6 @@ def transcribe_audio(audio_bytes):
         st.error(f"Voice transcription failed: {e}")
         return ""
 
-def load_lottiefile(filepath: str):
-    """Loads Lottie file (warns if not found)."""
-    try:
-        with open(filepath, "r") as f:
-            return json.load(f)
-    except FileNotFoundError:
-        st.warning(f"Lottie file not found at: {filepath}")
-        return None
-
 def load_lottieurl(url):
     """Loads Lottie animation directly from the web."""
     r = requests.get(url)
@@ -309,9 +305,8 @@ def analyze_audit_cached(plan_string):
         st.error(f"AI Audit Error: {e}")
         return None
 
-# --- অ্যাসেট লোডিং ---
-# ফিক্স: লোকাল ফাইল পাথ ব্যবহার করা
-success_anim = load_lottiefile("assets/success.json")
+# --- Asset Loading ---
+success_anim = load_lottieurl("https://assets9.lottiefiles.com/packages/lf20_SGlS1I.json")
 APP_URL = "https.arc-guardian.streamlit.app" 
 
 def execute_transactions(transactions: List[Transaction]):
@@ -390,12 +385,11 @@ with st.sidebar:
     except FileNotFoundError:
         st.warning("assets/team_logo.png not found.")
     
-    # --- ফিক্স: লোকাল ফাইল পাথ ব্যবহার করা ---
-    lottie_ai_brain = load_lottiefile("assets/ai_brain.json")
-    if lottie_ai_brain:
-        st_lottie(lottie_ai_brain, height=150, key="ai_brain_anim", speed=1)
-    else:
-        st.warning("assets/ai_brain.json Lottie file not found.")
+    # --- আপনার ফিক্স: লোকাল GIF অ্যানিমেশন লোড করা ---
+    try:
+        st.image("assets/ai_brain.gif", use_column_width=True)
+    except FileNotFoundError:
+        st.warning("⚠️ AI Brain GIF not found in assets folder.")
     # --- ফিক্স শেষ ---
 
     st.header("🧭 Control Center")
