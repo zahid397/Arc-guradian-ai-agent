@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import PromptTemplate
 
-# LangChain Version-Compatibility Fix
+# LangChain ভার্সন সামঞ্জস্যপূর্ণ করার ফিক্স
 try:
     from langchain.output_parsers import PydanticOutputParser
 except ImportError:
@@ -18,35 +18,35 @@ import random
 import time
 import json
 import io
-import base64 # For audio playback
-import traceback # For Global Exception UI
+import base64 # অডিও প্লেব্যাকের জন্য
+import traceback # গ্লোবাল এক্সেপশনের জন্য
 
 # Lottie, Mic Recorder, OpenAI (Whisper)
 from streamlit_lottie import st_lottie
 from streamlit_mic_recorder import mic_recorder
 import openai
 
-# Auto-Refresh
+# অটো-রিফ্রেশ
 from streamlit_autorefresh import st_autorefresh
 
-# Multi-Agent System
+# মাল্টি-এজেন্ট সিস্টেমের জন্য
 from langchain.chains import LLMChain
 
 # QR Code
 import qrcode
 from PIL import Image
 
-# --- ELEVENLABS SDK V2 FIX ---
-from elevenlabs import ElevenLabs
-# --- END FIX ---
+# ElevenLabs
+from elevenlabs import generate
 
 # ---------------- CONFIG ----------------
+# ফিক্স: ডেপ্রিকেটেড অপশন কমেন্ট আউট করা
 st.set_option('client.showErrorDetails', False)
-st.set_option('deprecation.showfileUploaderEncoding', False)
+# st.set_option('deprecation.showfileUploaderEncoding', False) # এই লাইনটি এখন অকেজো
 
 st.set_page_config(
     page_title="Arc Guardian AI Agent | Team Believer",
-    page_icon="assets/favicon.png", # Asset path
+    page_icon="assets/favicon.png", # অ্যাসেট পাথ
     layout="wide"
 )
 
@@ -106,7 +106,6 @@ def get_llm():
         llm = ChatOpenAI(model="gpt-3.5-turbo", api_key=OPENAI_API_KEY)
         return llm
 
-# --- ELEVENLABS SDK V2 FIX ---
 @st.cache_resource
 def get_elevenlabs_client():
     """Initializes the ElevenLabs client."""
@@ -114,7 +113,6 @@ def get_elevenlabs_client():
         st.warning("🔑 ElevenLabs API key missing in secrets.toml. Voice will be disabled.")
         return None
     return ElevenLabs(api_key=ELEVENLABS_API_KEY)
-# --- END FIX ---
 
 try:
     llm = get_llm()
@@ -134,16 +132,12 @@ def generate_tts(text: str, voice_name="Adam"):
         st.warning("🔑 ElevenLabs client not available. Skipping TTS.")
         return None
     try:
-        # --- ELEVENLABS SDK V2 FIX ---
-        # Use the new client.text_to_speech.convert() method
         audio_bytes = eleven_client.text_to_speech.convert(
             voice_id=voice_name.lower(),  # Use the name (Adam, Domi, etc.)
             model_id="eleven_multilingual_v2",
             text=text
         )
-        # The result of convert() is already bytes
         return audio_bytes
-        # --- END FIX ---
             
     except Exception as e:
         st.error(f"TTS Generation failed: {e}")
@@ -291,14 +285,12 @@ def load_lottiefile(filepath: str):
         st.warning(f"Lottie file not found at: {filepath}")
         return None
 
-# --- NEW: Load Lottie Animation from URL ---
 def load_lottieurl(url):
     """Loads Lottie animation directly from the web."""
     r = requests.get(url)
     if r.status_code != 200:
         return None
     return r.json()
-# --- End of new code ---
 
 def check_balance():
     """Simulates a dynamic mock balance."""
@@ -568,7 +560,6 @@ with tab1:
                                 plan_str = ai_plan.model_dump_json()
                                 audit_response_str = analyze_audit_cached(plan_str)
                                 
-                                # --- SECURE AUDIT FIX ---
                                 try:
                                     audit_result = json.loads(audit_response_str)
                                     st.session_state["audit_result"] = audit_result
@@ -582,7 +573,6 @@ with tab1:
                                         "audit_result": "REJECTED",
                                         "audit_comment": f"System error during audit: {e}"
                                     }
-                                # --- END FIX ---
                         else:
                             st.session_state["audit_result"] = {
                                 "audit_result": "APPROVED",
