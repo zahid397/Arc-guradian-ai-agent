@@ -3,7 +3,8 @@ streamlit-lottie
 streamlit-mic-recorder
 streamlit-autorefresh
 openai
-langchain
+langchain==0.2.12
+langchain-core==0.2.24
 langchain-openai
 pydantic
 pandas
