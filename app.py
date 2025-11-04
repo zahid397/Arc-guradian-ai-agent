@@ -36,20 +36,16 @@ from langchain.chains import LLMChain
 import qrcode
 from PIL import Image
 
-# --- ELEVENLABS v1.0.0+ FIX ---
-# We now import the main client
-from elevenlabs.client import ElevenLabs
-# We no longer import 'generate' from the top level
-# --- END FIX ---
-
+# ElevenLabs
+from elevenlabs import generate
 
 # ---------------- CONFIG ----------------
 st.set_option('client.showErrorDetails', False)
-# st.set_option('deprecation.showfileUploaderEncoding', False)
+st.set_option('deprecation.showfileUploaderEncoding', False)
 
 st.set_page_config(
     page_title="Arc Guardian AI Agent | Team Believer",
-    page_icon="assets/favicon.png", # Asset path
+    page_icon="assets/favicon.png", # Asset path (favicon must be local)
     layout="wide"
 )
 
@@ -65,8 +61,9 @@ ELEVENLABS_API_KEY = st.secrets.get("elevenlabs", {}).get("api_key")
 # ------------------------------------------------------------
 st.markdown("""
     <style>
-    /* Main action buttons */
-    div[data-testid="stButton"] > button[kind="primary"] {
+    /* Gradient buttons */
+    div[data-testid="stButton"] > button[kind="primary"],
+    div[data-testid="stButton"] > button[kind="secondary"] {
         background: linear-gradient(90deg, #00bcd4, #00e5ff);
         color: #000000;
         border: none;
@@ -77,17 +74,10 @@ st.markdown("""
         box-shadow: 0 0 15px 5px #00bcd4;
         transform: scale(1.02);
     }
-    /* Secondary (Analyze) button */
-    div[data-testid="stButton"] > button[kind="secondary"] {
-        background: linear-gradient(90deg, #00bcd4, #00e5ff);
-        color: #000000;
-        border: none;
-        font-weight: bold;
-    }
     div[data-testid="stButton"] > button[kind="secondary"]:hover {
         opacity: 0.8;
     }
-    /* Glowing border for sidebar */
+    /* Glowing sidebar */
     [data-testid="stSidebar"] {
         border-right: 2px solid #00bcd4;
         box-shadow: 0 0 15px 5px #00bcd4;
@@ -115,46 +105,30 @@ def get_llm():
         llm = ChatOpenAI(model="gpt-3.5-turbo", api_key=OPENAI_API_KEY)
         return llm
 
-@st.cache_resource
-def get_elevenlabs_client():
-    """Initializes the ElevenLabs client."""
-    if not ELEVENLABS_API_KEY:
-        st.warning("🔑 ElevenLabs API key missing in secrets.toml.")
-        return None
-    try:
-        return ElevenLabs(api_key=ELEVENLABS_API_KEY)
-    except Exception as e:
-        st.error(f"Failed to initialize ElevenLabs client: {e}")
-        return None
-
 try:
     llm = get_llm()
-    openai_client = openai.OpenAI(api_key=OPENAI_API_KEY)
-    eleven_client = get_elevenlabs_client() # Get the cached client
+    client = openai.OpenAI(api_key=OPENAI_API_KEY)
 except Exception as e:
     st.error(f"API Key setup error: {e}")
     st.stop()
 
 # ------------------------------------------------------------
-# 🔊 TTS HELPER FUNCTION (Optimized)
+# 🔊 TTS & LOTTIE HELPER FUNCTIONS (Optimized)
 # ------------------------------------------------------------
 @st.cache_data
 def generate_tts(text: str, voice_name="Adam"):
     """Generate AI voice using ElevenLabs and return bytes."""
-    if not eleven_client:
+    if not ELEVENLABS_API_KEY:
+        st.warning("🔑 ElevenLabs API key missing in secrets.toml.")
         return None
     try:
-        # --- ELEVENLABS v1.0.0+ FIX ---
-        # The new client.generate() returns an iterator of bytes (a stream)
-        audio_stream = eleven_client.generate(
+        audio_bytes = generate(
             text=text,
             voice=voice_name,
-            model="eleven_multilingual_v2"
+            model="eleven_multilingual_v2",
+            api_key=ELEVENLABS_API_KEY
         )
-        # We must collect the bytes from the stream
-        audio_bytes = b"".join([chunk for chunk in audio_stream])
         return audio_bytes
-        # --- END FIX ---
             
     except Exception as e:
         st.error(f"TTS Generation failed: {e}")
@@ -177,6 +151,15 @@ def play_tts_response(text, key="tts_playback", voice_override=None):
         st.markdown(audio_html, unsafe_allow_html=True)
     else:
         st.info("TTS unavailable – check API key or cloud environment.")
+
+# --- NEW: Load Lottie Animation from URL ---
+def load_lottieurl(url):
+    """Loads Lottie animation directly from the web."""
+    r = requests.get(url)
+    if r.status_code != 200:
+        return None
+    return r.json()
+# --- End of new code ---
 
 # ============================================================
 # 🧠 ARC GUARDIAN — PART B: AGENTS SETUP
@@ -284,7 +267,7 @@ def transcribe_audio(audio_bytes):
     try:
         audio_file = io.BytesIO(audio_bytes)
         audio_file.name = "recording.wav"
-        transcript_response = openai_client.audio.transcriptions.create(
+        transcript_response = client.audio.transcriptions.create(
             model="whisper-1",
             file=audio_file
         )
@@ -292,15 +275,6 @@ def transcribe_audio(audio_bytes):
     except Exception as e:
         st.error(f"Voice transcription failed: {e}")
         return ""
-
-def load_lottiefile(filepath: str):
-    """Loads Lottie file (warns if not found)."""
-    try:
-        with open(filepath, "r") as f:
-            return json.load(f)
-    except FileNotFoundError:
-        st.warning(f"Lottie file not found at: {filepath}")
-        return None
 
 def check_balance():
     """Simulates a dynamic mock balance."""
@@ -344,7 +318,7 @@ def analyze_audit_cached(plan_string):
         return None
 
 # --- Asset Loading ---
-success_anim = load_lottiefile("assets/success.json")
+success_anim = load_lottieurl("https://assets9.lottiefiles.com/packages/lf20_SGlS1I.json")
 APP_URL = "https.arc-guardian.streamlit.app" 
 
 def execute_transactions(transactions: List[Transaction]):
@@ -423,11 +397,13 @@ with st.sidebar:
     except FileNotFoundError:
         st.warning("assets/team_logo.png not found.")
     
-    ai_anim = load_lottiefile("assets/ai_brain.json")
-    if ai_anim:
-        st_lottie(ai_anim, height=150, key="ai_brain_anim", speed=1)
+    # --- NEW: Load AI Brain Animation from URL ---
+    lottie_ai_brain = load_lottieurl("https://assets3.lottiefiles.com/packages/lf20_842MIj3SPe.json")
+    if lottie_ai_brain:
+        st_lottie(lottie_ai_brain, height=150, key="ai_brain_anim", speed=1)
     else:
-        st.warning("assets/ai_brain.json Lottie file not found.")
+        st.warning("⚠️ Animation could not load (Check Internet Connection).")
+    # --- End of new code ---
 
     st.header("🧭 Control Center")
     
@@ -522,7 +498,7 @@ with tab1:
         """
         play_tts_response(demo_script, key="hackathon_voice", voice_override="Adam")
     
-    st.markdown("---") # Add a divider
+    st.markdown("---") 
 
     with st.container(border=True):
         st.subheader("1. Enter Your Command")
@@ -570,7 +546,6 @@ with tab1:
                                 plan_str = ai_plan.model_dump_json()
                                 audit_response_str = analyze_audit_cached(plan_str)
                                 
-                                # --- SECURE AUDIT FIX ---
                                 try:
                                     audit_result = json.loads(audit_response_str)
                                     st.session_state["audit_result"] = audit_result
@@ -584,7 +559,6 @@ with tab1:
                                         "audit_result": "REJECTED",
                                         "audit_comment": f"System error during audit: {e}"
                                     }
-                                # --- END FIX ---
                         else:
                             st.session_state["audit_result"] = {
                                 "audit_result": "APPROVED",
@@ -834,5 +808,3 @@ st.markdown("<p style='text-align:center; color:gray; font-size:14px;'>Empowerin
 # --- New Footer ---
 st.markdown("---")
 st.caption("Powered by Arc + OpenAI + ElevenLabs | Built by Zahid Hasan 🚀")
-
-
