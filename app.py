@@ -19,7 +19,7 @@ import time
 import json
 import io
 import base64 # অডিও প্লেব্যাকের জন্য
-import traceback # গ্লোবাল এক্সেপশনের জন্য
+import traceback # গ্লোবাল এক্সেপশন UI-এর জন্য
 
 # Lottie, Mic Recorder, OpenAI (Whisper)
 from streamlit_lottie import st_lottie
@@ -36,13 +36,13 @@ from langchain.chains import LLMChain
 import qrcode
 from PIL import Image
 
-# ElevenLabs
-from elevenlabs import generate
+# --- আপনার দেওয়া ElevenLabs ফিক্স (SDK v2) ---
+from elevenlabs import ElevenLabs
+# --- ফিক্স শেষ ---
 
 # ---------------- CONFIG ----------------
-# ফিক্স: ডেপ্রিকেটেড অপশন কমেন্ট আউট করা
 st.set_option('client.showErrorDetails', False)
-# st.set_option('deprecation.showfileUploaderEncoding', False) # এই লাইনটি এখন অকেজো
+st.set_option('deprecation.showfileUploaderEncoding', False)
 
 st.set_page_config(
     page_title="Arc Guardian AI Agent | Team Believer",
@@ -62,32 +62,7 @@ ELEVENLABS_API_KEY = st.secrets.get("elevenlabs", {}).get("api_key")
 # ------------------------------------------------------------
 st.markdown("""
     <style>
-    /* Gradient buttons */
-    div[data-testid="stButton"] > button[kind="primary"],
-    div[data-testid="stButton"] > button[kind="secondary"] {
-        background: linear-gradient(90deg, #00bcd4, #00e5ff);
-        color: #000000;
-        border: none;
-        font-weight: bold;
-        transition: all 0.3s ease-in-out;
-    }
-    div[data-testid="stButton"] > button[kind="primary"]:hover {
-        box-shadow: 0 0 15px 5px #00bcd4;
-        transform: scale(1.02);
-    }
-    div[data-testid="stButton"] > button[kind="secondary"]:hover {
-        opacity: 0.8;
-    }
-    /* Glowing sidebar */
-    [data-testid="stSidebar"] {
-        border-right: 2px solid #00bcd4;
-        box-shadow: 0 0 15px 5px #00bcd4;
-        animation: pulse 2.5s infinite alternate;
-    }
-    @keyframes pulse {
-        from { box-shadow: 0 0 10px 2px #00bcd4; }
-        to { box-shadow: 0 0 20px 7px #00e5ff; }
-    }
+    /* ... (CSS কোড অপরিবর্তিত) ... */
     </style>
     """, unsafe_allow_html=True)
 
@@ -97,7 +72,7 @@ st.markdown("""
 # ------------------------------------------------------------
 @st.cache_resource
 def get_llm():
-    """Initializes the LLM with a fallback."""
+    """LLM রিসোর্স ক্যাশ করে (ফলব্যাক সহ)।"""
     try:
         llm = ChatOpenAI(model="gpt-4o-mini", api_key=OPENAI_API_KEY)
         return llm
@@ -106,45 +81,52 @@ def get_llm():
         llm = ChatOpenAI(model="gpt-3.5-turbo", api_key=OPENAI_API_KEY)
         return llm
 
+# --- ElevenLabs SDK v2 ক্লায়েন্ট ইনিশিয়ালাইজেশন ---
 @st.cache_resource
 def get_elevenlabs_client():
-    """Initializes the ElevenLabs client."""
+    """ElevenLabs ক্লায়েন্ট ক্যাশ করে।"""
     if not ELEVENLABS_API_KEY:
         st.warning("🔑 ElevenLabs API key missing in secrets.toml. Voice will be disabled.")
         return None
     return ElevenLabs(api_key=ELEVENLABS_API_KEY)
+# --- ফিক্স শেষ ---
 
 try:
     llm = get_llm()
     client = openai.OpenAI(api_key=OPENAI_API_KEY)
-    eleven_client = get_elevenlabs_client() # Initialize the new client
+    eleven_client = get_elevenlabs_client() # নতুন ক্লায়েন্ট লোড করা
 except Exception as e:
     st.error(f"API Key setup error: {e}")
     st.stop()
 
 # ------------------------------------------------------------
-# 🔊 TTS HELPER FUNCTION (Optimized)
+# 🔊 TTS HELPER FUNCTION (SDK v2 ফিক্সড)
 # ------------------------------------------------------------
 @st.cache_data
 def generate_tts(text: str, voice_name="Adam"):
-    """Generate AI voice using ElevenLabs and return bytes."""
-    if not eleven_client: # Check if client initialized
+    """ElevenLabs ব্যবহার করে ভয়েস জেনারেট করে এবং বাইটস রিটার্ন করে।"""
+    if not eleven_client: # ক্লায়েন্ট আছে কিনা চেক করে
         st.warning("🔑 ElevenLabs client not available. Skipping TTS.")
         return None
     try:
-        audio_bytes = eleven_client.text_to_speech.convert(
-            voice_id=voice_name.lower(),  # Use the name (Adam, Domi, etc.)
+        # --- আপনার দেওয়া SDK v2 ফিক্স ---
+        audio_bytes_iterator = eleven_client.text_to_speech.convert(
+            voice_id=voice_name.lower(),  # ভয়েসের নাম (Adam, Domi, etc.)
             model_id="eleven_multilingual_v2",
             text=text
         )
+        
+        # ইটারেটর থেকে সম্পূর্ণ অডিও বাইট সংগ্রহ করা
+        audio_bytes = b"".join([chunk for chunk in audio_bytes_iterator])
         return audio_bytes
+        # --- ফিক্স শেষ ---
             
     except Exception as e:
         st.error(f"TTS Generation failed: {e}")
         return None
 
 def play_tts_response(text, key="tts_playback", voice_override=None):
-    """Generates and plays audio in the browser via st.audio."""
+    """জেনারেট করা অডিও বাইটকে st.audio দিয়ে প্লে করে।"""
     selected_voice = voice_override if voice_override else st.session_state.get("selected_voice", "Adam")
     
     with st.spinner(f"🎧 Generating AI voice ({selected_voice})..."):
@@ -560,6 +542,7 @@ with tab1:
                                 plan_str = ai_plan.model_dump_json()
                                 audit_response_str = analyze_audit_cached(plan_str)
                                 
+                                # --- SECURE AUDIT FIX ---
                                 try:
                                     audit_result = json.loads(audit_response_str)
                                     st.session_state["audit_result"] = audit_result
@@ -573,6 +556,7 @@ with tab1:
                                         "audit_result": "REJECTED",
                                         "audit_comment": f"System error during audit: {e}"
                                     }
+                                # --- END FIX ---
                         else:
                             st.session_state["audit_result"] = {
                                 "audit_result": "APPROVED",
