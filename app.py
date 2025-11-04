@@ -12,7 +12,7 @@ try:
 except ImportError:
     from langchain_core.output_parsers import PydanticOutputParser
 
-# --- NEW: Import for StrOutputParser ---
+# --- NEW: Import for StrOutputParser (for Audit Agent) ---
 from langchain_core.output_parsers import StrOutputParser
 
 from pydantic import BaseModel, Field
@@ -32,19 +32,18 @@ import openai
 # Auto-Refresh
 from streamlit_autorefresh import st_autorefresh
 
-# --- REMOVED: Deprecated LLMChain ---
-# from langchain.chains import LLMChain 
-
 # QR Code
 import qrcode
 from PIL import Image
 
-# ElevenLabs
+# --- ELEVENLABS SDK V2 FIX ---
 from elevenlabs import ElevenLabs
+# --- END FIX ---
 
 # ---------------- CONFIG ----------------
+# --- FIX: Removed deprecated option ---
 st.set_option('client.showErrorDetails', False)
-st.set_option('deprecation.showfileUploaderEncoding', False)
+# st.set_option('deprecation.showfileUploaderEncoding', False) # <-- This line caused the crash and is now REMOVED.
 
 st.set_page_config(
     page_title="Arc Guardian AI Agent | Team Believer",
@@ -64,7 +63,32 @@ ELEVENLABS_API_KEY = st.secrets.get("elevenlabs", {}).get("api_key")
 # ------------------------------------------------------------
 st.markdown("""
     <style>
-    /* ... (CSS code remains the same) ... */
+    /* Gradient buttons */
+    div[data-testid="stButton"] > button[kind="primary"],
+    div[data-testid="stButton"] > button[kind="secondary"] {
+        background: linear-gradient(90deg, #00bcd4, #00e5ff);
+        color: #000000;
+        border: none;
+        font-weight: bold;
+        transition: all 0.3s ease-in-out;
+    }
+    div[data-testid="stButton"] > button[kind="primary"]:hover {
+        box-shadow: 0 0 15px 5px #00bcd4;
+        transform: scale(1.02);
+    }
+    div[data-testid="stButton"] > button[kind="secondary"]:hover {
+        opacity: 0.8;
+    }
+    /* Glowing sidebar */
+    [data-testid="stSidebar"] {
+        border-right: 2px solid #00bcd4;
+        box-shadow: 0 0 15px 5px #00bcd4;
+        animation: pulse 2.5s infinite alternate;
+    }
+    @keyframes pulse {
+        from { box-shadow: 0 0 10px 2px #00bcd4; }
+        to { box-shadow: 0 0 20px 7px #00e5ff; }
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -94,7 +118,7 @@ def get_elevenlabs_client():
 try:
     llm = get_llm()
     client = openai.OpenAI(api_key=OPENAI_API_KEY)
-    eleven_client = get_elevenlabs_client()
+    eleven_client = get_elevenlabs_client() # Initialize new client
 except Exception as e:
     st.error(f"API Key setup error: {e}")
     st.stop()
@@ -109,11 +133,13 @@ def generate_tts(text: str, voice_name="Adam"):
         st.warning("🔑 ElevenLabs client not available. Skipping TTS.")
         return None
     try:
+        # Use the new client.text_to_speech.convert() method
         audio_bytes_iterator = eleven_client.text_to_speech.convert(
             voice_id=voice_name.lower(),  
             model_id="eleven_multilingual_v2",
             text=text
         )
+        # Combine the audio chunks into single bytes
         audio_bytes = b"".join([chunk for chunk in audio_bytes_iterator])
         return audio_bytes
             
@@ -198,13 +224,9 @@ try:
         """,  
         input_variables=["plan_string"]  
     )  
-    
-    # --- THIS IS THE FIX ---
-    # Use the modern LCEL syntax instead of the deprecated LLMChain
+    # FIX: Use modern LCEL syntax instead of deprecated LLMChain
     audit_output_parser = StrOutputParser()
     chain_auditor = auditor_prompt | llm | audit_output_parser
-    # --- END FIX ---
-
 except Exception as e:
     st.error(f"Audit Agent setup error: {e}")
     st.stop()
@@ -302,11 +324,8 @@ def analyze_command_cached(user_input):
 def analyze_audit_cached(plan_string):
     """Calls Agent 2 (Auditor)."""
     try:
-        # --- THIS IS THE FIX ---
-        # The new chain returns a string directly, not a dictionary
         response_string = chain_auditor.invoke({"plan_string": plan_string})
         return response_string
-        # --- END FIX ---
     except Exception as e:
         st.error(f"AI Audit Error: {e}")
         return None
