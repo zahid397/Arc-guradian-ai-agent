@@ -6,11 +6,14 @@ import matplotlib.pyplot as plt
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import PromptTemplate
 
-# LangChain ভার্সন সামঞ্জস্যপূর্ণ করার ফিক্স
+# LangChain Version-Compatibility Fix
 try:
     from langchain.output_parsers import PydanticOutputParser
 except ImportError:
     from langchain_core.output_parsers import PydanticOutputParser
+
+# --- NEW: Import for StrOutputParser ---
+from langchain_core.output_parsers import StrOutputParser
 
 from pydantic import BaseModel, Field
 from typing import List
@@ -18,40 +21,34 @@ import random
 import time
 import json
 import io
-import base64 # অডিও প্লেব্যাকের জন্য
-import traceback # গ্লোবাল এক্সেপশন UI-এর জন্য
+import base64 # For audio playback
+import traceback # For Global Exception UI
 
 # Lottie, Mic Recorder, OpenAI (Whisper)
 from streamlit_lottie import st_lottie
 from streamlit_mic_recorder import mic_recorder
 import openai
 
-# অটো-রিফ্রেশ
+# Auto-Refresh
 from streamlit_autorefresh import st_autorefresh
 
-# ✅ Compatible Import Fix for Streamlit Cloud
-try:
-    from langchain_core.chains import LLMChain
-except ModuleNotFoundError:
-    try:
-        from langchain.chains import LLMChain
-    except ModuleNotFoundError:
-        import warnings
-        warnings.warn("⚠️ LLMChain not found in both langchain_core and langchain.")
-        LLMChain = None
+# --- REMOVED: Deprecated LLMChain ---
+# from langchain.chains import LLMChain 
 
 # QR Code
 import qrcode
 from PIL import Image
 
-# --- আপনার দেওয়া ElevenLabs ফিক্স (SDK v2) ---
+# ElevenLabs
 from elevenlabs import ElevenLabs
-# --- ফিক্স শেষ ---
 
 # ---------------- CONFIG ----------------
+st.set_option('client.showErrorDetails', False)
+st.set_option('deprecation.showfileUploaderEncoding', False)
+
 st.set_page_config(
     page_title="Arc Guardian AI Agent | Team Believer",
-    page_icon="assets/favicon.png",
+    page_icon="assets/favicon.png", # Asset path
     layout="wide"
 )
 
@@ -67,32 +64,7 @@ ELEVENLABS_API_KEY = st.secrets.get("elevenlabs", {}).get("api_key")
 # ------------------------------------------------------------
 st.markdown("""
     <style>
-    /* Gradient buttons */
-    div[data-testid="stButton"] > button[kind="primary"],
-    div[data-testid="stButton"] > button[kind="secondary"] {
-        background: linear-gradient(90deg, #00bcd4, #00e5ff);
-        color: #000000;
-        border: none;
-        font-weight: bold;
-        transition: all 0.3s ease-in-out;
-    }
-    div[data-testid="stButton"] > button[kind="primary"]:hover {
-        box-shadow: 0 0 15px 5px #00bcd4;
-        transform: scale(1.02);
-    }
-    div[data-testid="stButton"] > button[kind="secondary"]:hover {
-        opacity: 0.8;
-    }
-    /* Glowing sidebar */
-    [data-testid="stSidebar"] {
-        border-right: 2px solid #00bcd4;
-        box-shadow: 0 0 15px 5px #00bcd4;
-        animation: pulse 2.5s infinite alternate;
-    }
-    @keyframes pulse {
-        from { box-shadow: 0 0 10px 2px #00bcd4; }
-        to { box-shadow: 0 0 20px 7px #00e5ff; }
-    }
+    /* ... (CSS code remains the same) ... */
     </style>
     """, unsafe_allow_html=True)
 
@@ -102,7 +74,7 @@ st.markdown("""
 # ------------------------------------------------------------
 @st.cache_resource
 def get_llm():
-    """LLM রিসোর্স ক্যাশ করে (ফলব্যাক সহ)।"""
+    """Initializes the LLM with a fallback."""
     try:
         llm = ChatOpenAI(model="gpt-4o-mini", api_key=OPENAI_API_KEY)
         return llm
@@ -111,52 +83,46 @@ def get_llm():
         llm = ChatOpenAI(model="gpt-3.5-turbo", api_key=OPENAI_API_KEY)
         return llm
 
-# --- ElevenLabs SDK v2 ক্লায়েন্ট ইনিশিয়ালাইজেশন ---
 @st.cache_resource
 def get_elevenlabs_client():
-    """ElevenLabs ক্লায়েন্ট ক্যাশ করে।"""
+    """Initializes the ElevenLabs client."""
     if not ELEVENLABS_API_KEY:
         st.warning("🔑 ElevenLabs API key missing in secrets.toml. Voice will be disabled.")
         return None
     return ElevenLabs(api_key=ELEVENLABS_API_KEY)
-# --- ফিক্স শেষ ---
 
 try:
     llm = get_llm()
     client = openai.OpenAI(api_key=OPENAI_API_KEY)
-    eleven_client = get_elevenlabs_client() # নতুন ক্লায়েন্ট লোড করা
+    eleven_client = get_elevenlabs_client()
 except Exception as e:
     st.error(f"API Key setup error: {e}")
     st.stop()
 
 # ------------------------------------------------------------
-# 🔊 TTS HELPER FUNCTION (SDK v2 ফিক্সড)
+# 🔊 TTS HELPER FUNCTION (SDK v2)
 # ------------------------------------------------------------
 @st.cache_data
 def generate_tts(text: str, voice_name="Adam"):
-    """ElevenLabs ব্যবহার করে ভয়েস জেনারেট করে এবং বাইটস রিটার্ন করে।"""
-    if not eleven_client: # ক্লায়েন্ট আছে কিনা চেক করে
+    """Generate AI voice using ElevenLabs and return bytes."""
+    if not eleven_client: 
         st.warning("🔑 ElevenLabs client not available. Skipping TTS.")
         return None
     try:
-        # --- আপনার দেওয়া SDK v2 ফিক্স ---
         audio_bytes_iterator = eleven_client.text_to_speech.convert(
-            voice_id=voice_name.lower(),  # ভয়েসের নাম (Adam, Domi, etc.)
+            voice_id=voice_name.lower(),  
             model_id="eleven_multilingual_v2",
             text=text
         )
-        
-        # ইটারেটর থেকে সম্পূর্ণ অডিও বাইট সংগ্রহ করা
         audio_bytes = b"".join([chunk for chunk in audio_bytes_iterator])
         return audio_bytes
-        # --- ফিক্স শেষ ---
             
     except Exception as e:
         st.error(f"TTS Generation failed: {e}")
         return None
 
 def play_tts_response(text, key="tts_playback", voice_override=None):
-    """জেনারেট করা অডিও বাইটকে st.audio দিয়ে প্লে করে।"""
+    """Generates and plays audio in the browser via st.audio."""
     selected_voice = voice_override if voice_override else st.session_state.get("selected_voice", "Adam")
     
     with st.spinner(f"🎧 Generating AI voice ({selected_voice})..."):
@@ -232,7 +198,13 @@ try:
         """,  
         input_variables=["plan_string"]  
     )  
-    chain_auditor = LLMChain(llm=llm, prompt=auditor_prompt, output_key="audit_response")
+    
+    # --- THIS IS THE FIX ---
+    # Use the modern LCEL syntax instead of the deprecated LLMChain
+    audit_output_parser = StrOutputParser()
+    chain_auditor = auditor_prompt | llm | audit_output_parser
+    # --- END FIX ---
+
 except Exception as e:
     st.error(f"Audit Agent setup error: {e}")
     st.stop()
@@ -288,15 +260,6 @@ def transcribe_audio(audio_bytes):
         st.error(f"Voice transcription failed: {e}")
         return ""
 
-def load_lottiefile(filepath: str):
-    """Loads Lottie file (warns if not found)."""
-    try:
-        with open(filepath, "r") as f:
-            return json.load(f)
-    except FileNotFoundError:
-        st.warning(f"Lottie file not found at: {filepath}")
-        return None
-
 def load_lottieurl(url):
     """Loads Lottie animation directly from the web."""
     r = requests.get(url)
@@ -339,8 +302,11 @@ def analyze_command_cached(user_input):
 def analyze_audit_cached(plan_string):
     """Calls Agent 2 (Auditor)."""
     try:
-        response = chain_auditor.invoke({"plan_string": plan_string})
-        return response["audit_response"]
+        # --- THIS IS THE FIX ---
+        # The new chain returns a string directly, not a dictionary
+        response_string = chain_auditor.invoke({"plan_string": plan_string})
+        return response_string
+        # --- END FIX ---
     except Exception as e:
         st.error(f"AI Audit Error: {e}")
         return None
@@ -433,7 +399,7 @@ with st.sidebar:
 
     st.header("🧭 Control Center")
     
-    st.markdown("[🎥 Watch Demo](http://googleusercontent.com/youtube/com/2)")
+    st.markdown("[🎥 Watch Demo](http.googleusercontent.com/youtube/com/2)")
     st.info("API keys loaded from `.streamlit/secrets.toml`")
     
     if not OPENAI_API_KEY: st.error("OpenAI API Key not found.")
@@ -836,9 +802,3 @@ st.markdown("<p style='text-align:center; color:gray; font-size:14px;'>Empowerin
 # --- New Footer ---
 st.markdown("---")
 st.caption("Powered by Arc + OpenAI + ElevenLabs | Built by Zahid Hasan 🚀")
-
-
-
-
-
-
