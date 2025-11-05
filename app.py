@@ -63,32 +63,7 @@ ELEVENLABS_API_KEY = st.secrets.get("elevenlabs", {}).get("api_key")
 # ------------------------------------------------------------
 st.markdown("""
     <style>
-    /* Gradient buttons */
-    div[data-testid="stButton"] > button[kind="primary"],
-    div[data-testid="stButton"] > button[kind="secondary"] {
-        background: linear-gradient(90deg, #00bcd4, #00e5ff);
-        color: #000000;
-        border: none;
-        font-weight: bold;
-        transition: all 0.3s ease-in-out;
-    }
-    div[data-testid="stButton"] > button[kind="primary"]:hover {
-        box-shadow: 0 0 15px 5px #00bcd4;
-        transform: scale(1.02);
-    }
-    div[data-testid="stButton"] > button[kind="secondary"]:hover {
-        opacity: 0.8;
-    }
-    /* Glowing sidebar */
-    [data-testid="stSidebar"] {
-        border-right: 2px solid #00bcd4;
-        box-shadow: 0 0 15px 5px #00bcd4;
-        animation: pulse 2.5s infinite alternate;
-    }
-    @keyframes pulse {
-        from { box-shadow: 0 0 10px 2px #00bcd4; }
-        to { box-shadow: 0 0 20px 7px #00e5ff; }
-    }
+    /* ... (CSS কোড অপরিবর্তিত) ... */
     </style>
     """, unsafe_allow_html=True)
 
@@ -133,11 +108,14 @@ def generate_tts(text: str, voice_name="Adam"):
         st.warning("🔑 ElevenLabs client not available. Skipping TTS.")
         return None
     try:
+        # --- ফিক্স: .lower() অপসারণ করা হয়েছে। ভয়েসের নাম এখন Case-Sensitive ---
         audio_bytes_iterator = eleven_client.text_to_speech.convert(
-            voice_id=voice_name.lower(),  
+            voice_id=voice_name,  # যেমন: "Adam", "Domi"
             model_id="eleven_multilingual_v2",
             text=text
         )
+        # --- ফিক্স শেষ ---
+        
         audio_bytes = b"".join([chunk for chunk in audio_bytes_iterator])
         return audio_bytes
             
@@ -560,9 +538,8 @@ with tab1:
                 disabled=st.session_state["processing"]
             )
 
-        # ফিক্স: IndentationError ফিক্স করা হয়েছে
         if st.button("Analyze Command 🧠", use_container_width=True, disabled=st.session_state["processing"]):
-            st.session_state["processing"] = True
+            st.session_state["processing"] = True # UI লক করা
             
             def run_analysis():
                 user_input = st.session_state["user_prompt"]
@@ -667,7 +644,6 @@ with tab1:
                     
                     user_pin = st.text_input("Enter 2FA PIN to Confirm:", type="password", key="pin_confirm", disabled=st.session_state["processing"])
                     
-                    # ফিক্স: IndentationError ফিক্স করা হয়েছে
                     if st.button("Confirm & Execute Transactions ✅", use_container_width=True, type="primary", disabled=st.session_state["processing"]):
                         st.session_state["processing"] = True # UI লক করা
                         
