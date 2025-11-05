@@ -19,7 +19,7 @@ import random
 import time
 import json
 import io
-import base64 # অডিও প্লেব্যাক এবং ভিডিওর জন্য
+import base64 # অডিও প্লেব্যাকের জন্য
 import traceback # গ্লোবাল এক্সেপশন UI-এর জন্য
 
 # Lottie, Mic Recorder, OpenAI (Whisper)
@@ -299,7 +299,7 @@ def get_asset_as_base64(path):
             mime_type = "video/mp4"
         elif path.endswith(".png"):
             mime_type = "image/png"
-        elif path.endswith(".gif"): # --- GIF ফিক্স ---
+        elif path.endswith(".gif"):
             mime_type = "image/gif"
         else:
             mime_type = "application/octet-stream"
@@ -430,13 +430,12 @@ with st.sidebar:
     except FileNotFoundError:
         st.warning("assets/team_logo.png not found.")
     
-    # --- ফিক্স: লোকাল GIF অ্যানিমেশন (Base64 এনকোডেড) ---
+    # লোকাল GIF অ্যানিমেশন (Base64 এনকোডেড)
     gif_b64 = get_asset_as_base64("assets/ai_brain.gif")
     if gif_b64:
         st.markdown(f'<img src="{gif_b64}" alt="AI Brain GIF" width="100%" style="border-radius: 8px; max-width: 250px;">', unsafe_allow_html=True)
     else:
         st.warning("⚠️ AI Brain GIF not found in assets folder.")
-    # --- ফিক্স শেষ ---
 
     st.header("🧭 Control Center")
     
@@ -539,12 +538,17 @@ with tab1:
         col_mic, col_text = st.columns([1, 8])
         with col_mic:
             st.write(" ") 
-            audio = mic_recorder(start_prompt="🎙️", stop_prompt="⏹️", key='recorder', use_container_width=True, disabled=st.session_state["processing"])
+            # ফিক্স: `disabled` আর্গুমেন্টটি `mic_recorder` থেকে সরানো হয়েছে
+            audio = mic_recorder(start_prompt="🎙️", stop_prompt="⏹️", key='recorder', use_container_width=True)
         
         if audio:
-            st.success("🎤 Voice captured! Transcribing...")
-            with st.spinner("Transcribing your voice..."):
-                st.session_state["user_prompt"] = transcribe_audio(audio['bytes'])
+            # ফিক্স: প্রসেসিং চলাকালীন নতুন ভয়েস ইনপুট ব্লক করা
+            if st.session_state["processing"]:
+                st.warning("Please wait for the current analysis to finish.")
+            else:
+                st.success("🎤 Voice captured! Transcribing...")
+                with st.spinner("Transcribing your voice..."):
+                    st.session_state["user_prompt"] = transcribe_audio(audio['bytes'])
                 st.experimental_rerun() 
 
         with col_text:
@@ -556,6 +560,7 @@ with tab1:
                 disabled=st.session_state["processing"]
             )
 
+        # ফিক্স: IndentationError ফিক্স করা হয়েছে
         if st.button("Analyze Command 🧠", use_container_width=True, disabled=st.session_state["processing"]):
             st.session_state["processing"] = True
             
@@ -611,7 +616,7 @@ with tab1:
                 if "user_prompt" in st.session_state:
                     st.session_state["user_prompt"] = ""
                 
-                st.session_state["processing"] = False
+                st.session_state["processing"] = False # প্রসেসিং শেষ
                 st.experimental_rerun()
 
             safe_execute(run_analysis) # Use the safe wrapper
@@ -662,21 +667,22 @@ with tab1:
                     
                     user_pin = st.text_input("Enter 2FA PIN to Confirm:", type="password", key="pin_confirm", disabled=st.session_state["processing"])
                     
+                    # ফিক্স: IndentationError ফিক্স করা হয়েছে
                     if st.button("Confirm & Execute Transactions ✅", use_container_width=True, type="primary", disabled=st.session_state["processing"]):
-                        st.session_state["processing"] = True
+                        st.session_state["processing"] = True # UI লক করা
                         
                         def run_confirmation():
                             if user_pin != st.session_state["correct_pin"]:
                                 st.error("❌ Invalid PIN. Transactions aborted.")
                                 play_tts_response("Invalid PIN. Transaction aborted.", key="tts_pin_invalid")
-                                st.session_state["processing"] = False
+                                st.session_state["processing"] = False # UI আনলক করা (ফেইল হলে)
                             else:
                                 st.success("✅ PIN Accepted. Executing transactions...")
                                 play_tts_response("PIN verified. Executing transactions now.", key="tts_pin_valid")
                                 execute_transactions(plan.transactions)
                                 st.session_state["ai_plan"] = None
                                 st.session_state["audit_result"] = None
-                                st.session_state["processing"] = False
+                                st.session_state["processing"] = False # UI আনলক করা (সাকসেস হলে)
                                 st.experimental_rerun()
                         
                         safe_execute(run_confirmation) # Use the safe wrapper
@@ -850,4 +856,4 @@ st.markdown("<p style='text-align:center; color:gray; font-size:14px;'>Empowerin
 # --- New Footer ---
 st.markdown("---")
 st.caption("Powered by Arc + OpenAI + ElevenLabs | Built by Zahid Hasan 🚀")
-st.caption("© 2025 Team Believer")
+st.caption("© 2025 Team Believer") # ব্র্যান্ডেড ফুটার
