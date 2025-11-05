@@ -723,9 +723,7 @@ with tab2:
         st.dataframe(log_df.sort_values(by="timestamp", ascending=False), use_container_width=True)
     else:
         st.info("এখনো কোনো reasoning log নেই।")
-        AI Agents on Arc with USDC.
-        Build agentic payments securely with parser & auditor agents.
-        Say: "Send 10 USDC to 0x1234...ABCD" or "Check my balance".
+        demo_script = "AI Agents on Arc with USDC. Build agentic payments securely with parser & auditor agents."
        # --- Main Tabs ---
 tab1, tab2 = st.tabs(["🤖 New Transaction", "📊 Dashboard & History"])
 
@@ -821,3 +819,4 @@ with tab2:
         st.info("No reasoning logs yet.")
     else:
         st.dataframe(log_df) 
+
