@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import PromptTemplate
 
-# LangChain Version-Compatibility Fix
+# LangChain ভার্সন সামঞ্জস্যপূর্ণ করার ফিক্স
 try:
     from langchain.output_parsers import PydanticOutputParser
 except ImportError:
@@ -19,22 +19,22 @@ import random
 import time
 import json
 import io
-import base64 # For asset encoding
-import traceback # For Global Exception UI
-import os # For file path checking
+import base64 # QR কোডের জন্য
+import traceback # গ্লোবাল এক্সেপশন UI-এর জন্য
+import os # ফাইল পাথ চেকের জন্য
 
 # Mic Recorder, OpenAI (Whisper)
 from streamlit_mic_recorder import mic_recorder
 import openai
 
-# Auto-Refresh
+# অটো-রিফ্রেশ
 from streamlit_autorefresh import st_autorefresh
 
 # QR Code
 import qrcode
 from PIL import Image
 
-# --- ElevenLabs has been REMOVED ---
+# --- ElevenLabs এবং Lottie সরানো হয়েছে ---
 
 # ---------------- CONFIG ----------------
 st.set_option('client.showErrorDetails', False)
@@ -42,7 +42,7 @@ st.set_option('client.showErrorDetails', False)
 
 st.set_page_config(
     page_title="Arc Guardian AI Agent | Team Believer",
-    page_icon="assets/favicon.png", # Asset path
+    page_icon="assets/favicon.png", # অ্যাসেট পাথ
     layout="wide"
 )
 
@@ -51,7 +51,7 @@ st.set_page_config(
 # ------------------------------------------------------------
 OPENAI_API_KEY = st.secrets.get("openai", {}).get("api_key")
 ARC_API_KEY = st.secrets.get("arc", {}).get("api_key")
-# ELEVENLABS_API_KEY = st.secrets.get("elevenlabs", {}).get("api_key") # REMOVED
+# ELEVENLABS_API_KEY সরানো হয়েছে
 
 # ------------------------------------------------------------
 # 🎨 UI POLISH (CSS INJECTION)
@@ -93,7 +93,7 @@ st.markdown("""
 # ------------------------------------------------------------
 @st.cache_resource
 def get_llm():
-    """Initializes the LLM with a fallback."""
+    """LLM রিসোর্স ক্যাশ করে (ফলব্যাক সহ)।"""
     try:
         llm = ChatOpenAI(model="gpt-4o-mini", api_key=OPENAI_API_KEY)
         return llm
@@ -102,7 +102,7 @@ def get_llm():
         llm = ChatOpenAI(model="gpt-3.5-turbo", api_key=OPENAI_API_KEY)
         return llm
 
-# --- ElevenLabs client REMOVED ---
+# --- ElevenLabs ক্লায়েন্ট সরানো হয়েছে ---
 
 try:
     llm = get_llm()
@@ -112,11 +112,11 @@ except Exception as e:
     st.stop()
 
 # ------------------------------------------------------------
-# 🔊 TTS HELPER FUNCTION (REMOVED)
+# 🔊 TTS HELPER FUNCTION ( সরানো হয়েছে )
 # ------------------------------------------------------------
 def play_tts_response(text, key="tts_playback", voice_override=None):
-    """Voice output is disabled for cloud stability."""
-    pass # Do nothing
+    """ভয়েস আউটপুট ক্লাউডের জন্য ডিসেবল করা হয়েছে।"""
+    pass # কোনো কিছু না করে সাইলেন্টলি স্কিপ
 
 # ============================================================
 # 🧠 ARC GUARDIAN — PART B: AGENTS SETUP
@@ -204,7 +204,7 @@ if "mock_balance" not in st.session_state:
     st.session_state["mock_balance"] = 120.0
 if "enable_audit" not in st.session_state:
     st.session_state["enable_audit"] = True
-# if "selected_voice" not in st.session_state: # REMOVED
+# if "selected_voice" not in st.session_state: # সরানো হয়েছে
 #     st.session_state["selected_voice"] = "Adam"
 if "processing" not in st.session_state:
     st.session_state["processing"] = False
@@ -243,25 +243,6 @@ def load_lottiefile(filepath: str):
             return json.load(f)
     except FileNotFoundError:
         st.warning(f"Lottie file not found at: {filepath}")
-        return None
-
-def get_asset_as_base64(path):
-    """Encodes a local asset file into Base64 Data URI."""
-    try:
-        with open(path, "rb") as f:
-            data = f.read()
-        if path.endswith(".mp4"):
-            mime_type = "video/mp4"
-        elif path.endswith(".png"):
-            mime_type = "image/png"
-        elif path.endswith(".gif"):
-            mime_type = "image/gif"
-        else:
-            mime_type = "application/octet-stream"
-        b64 = base64.b64encode(data).decode()
-        return f"data:{mime_type};base64,{b64}"
-    except FileNotFoundError:
-        st.warning(f"Asset file not found: {path}")
         return None
 
 def check_balance():
@@ -329,7 +310,7 @@ def execute_transactions(transactions: List[Transaction]):
                 log_transaction(txn.receiver, txn.amount, "success", "SIMULATED_TXN_ID")
                 st.toast(f"Sent {txn.amount} USDC successfully! ✅")
                 
-                # play_tts_response(tts_text, key="tts_exec_sim") # REMOVED
+                # play_tts_response(tts_text, key="tts_exec_sim") # সরানো হয়েছে
                 
                 if success_anim:
                     st_lottie(success_anim, height=180, key=f"success_{txn.receiver}_{random.randint(0, 1000)}")
@@ -353,7 +334,7 @@ def execute_transactions(transactions: List[Transaction]):
                         log_transaction(txn.receiver, txn.amount, "success", txn_id)
                         st.toast(f"Sent {txn.amount} USDC successfully! ✅")
                         
-                        # play_tts_response(tts_text, key="tts_exec_real") # REMOVED
+                        # play_tts_response(tts_text, key="tts_exec_real") # সরানো হয়েছে
                         
                         if success_anim:
                             st_lottie(success_anim, height=180, key=f"success_{txn.receiver}_{random.randint(0, 1000)}")
@@ -377,9 +358,9 @@ with st.sidebar:
     except FileNotFoundError:
         st.warning("assets/team_logo.png not found.")
     
-    # --- FIX: Removed GIF/Lottie animation from sidebar ---
-    st.markdown("---") # Replaced animation with a simple divider
-    # --- END FIX ---
+    # --- ফিক্স: GIF অ্যানিমেশন সরানো হয়েছে ---
+    st.markdown("---") # একটি ডিভাইডার দিয়ে প্রতিস্থাপন করা হয়েছে
+    # --- ফিক্স শেষ ---
 
     st.header("🧭 Control Center")
     
@@ -390,7 +371,7 @@ with st.sidebar:
     if not ARC_API_KEY: st.warning("Arc API Key not found.")
     else: st.success("API keys loaded successfully.")
     
-    # if not ELEVENLABS_API_KEY: # REMOVED
+    # if not ELEVENLABS_API_KEY: # সরানো হয়েছে
     #     st.warning("ElevenLabs API Key not found. Voice output will be skipped.")
     
     st.toggle("🧪 Simulation Mode", value=st.session_state["simulation_mode"], key="simulation_mode", 
@@ -402,7 +383,7 @@ with st.sidebar:
     st.toggle("🛡️ Enable Audit Agent", value=st.session_state["enable_audit"], key="enable_audit",
               help="If disabled, transactions will be approved automatically (DANGEROUS).")
 
-    # --- Voice Language Selector REMOVED ---
+    # --- ভয়েস ল্যাঙ্গুয়েজ সেকশন সরানো হয়েছে ---
     
     st.divider()
     
@@ -453,7 +434,7 @@ tab1, tab2 = st.tabs(["🤖 New Transaction", "📊 Dashboard & History"])
 # --- Tab 1: New Transaction ---
 with tab1:
     
-    # --- Demo Voice Button REMOVED ---
+    # --- ভয়েস ডেমো বাটন সরানো হয়েছে ---
     
     st.markdown("---") 
 
@@ -536,7 +517,7 @@ with tab1:
                     log_transaction("N/A", 0, "failed", "AI Parsing Error")
                 
                 if "user_prompt" in st.session_state:
-                    st.session_state["user_prompt"] = ""
+                    st.session_state["user_prompt"] = "" # ফিক্স: এই লাইনটি এখন নিরাপদ কারণ এটি rerun-এর আগে কল হচ্ছে
                 
                 st.session_state["processing"] = False
                 st.experimental_rerun()
@@ -552,7 +533,7 @@ with tab1:
             if plan.action == "CHECK_BALANCE":
                 balance_text = check_balance()
                 st.success(f"🤖 AI recognized 'Check Balance': {balance_text}")
-                # play_tts_response(balance_text, key="tts_balance") # REMOVED
+                # play_tts_response(balance_text, key="tts_balance") # সরানো হয়েছে
                 st.session_state["ai_plan"] = None
                 st.session_state["audit_result"] = None
 
@@ -565,13 +546,10 @@ with tab1:
                     
                     if audit_status == "APPROVED":
                         st.success(f"**Audit Status:** ✅ **APPROVED**\n\n*Auditor's Note: {audit_comment}*")
-                        # play_tts_response(tts_text, key="tts_audit_approve") # REMOVED
                     elif audit_status == "FLAGGED":
                         st.warning(f"**Audit Status:** ⚠️ **FLAGGED (Execution Halted)**\n\n*Auditor's Note: {audit_comment}*")
-                        # play_tts_response(tts_text, key="tts_audit_flag") # REMOVED
                     elif audit_status == "REJECTED":
                         st.error(f"**Audit Status:** 🚫 **REJECTED (Execution Halted)**\n\n*Auditor's Note: {audit_comment}*")
-                        # play_tts_response(tts_text, key="tts_audit_reject") # REMOVED
                 else:
                     st.error("🛡️ Audit Agent: Could not review the plan. Execution halted.")
                     audit_status = "REJECTED"
@@ -592,11 +570,9 @@ with tab1:
                         def run_confirmation():
                             if user_pin != st.session_state["correct_pin"]:
                                 st.error("❌ Invalid PIN. Transactions aborted.")
-                                # play_tts_response("Invalid PIN. Transaction aborted.", key="tts_pin_invalid") # REMOVED
                                 st.session_state["processing"] = False
                             else:
                                 st.success("✅ PIN Accepted. Executing transactions...")
-                                # play_tts_response("PIN verified. Executing transactions now.", key="tts_pin_valid") # REMOVED
                                 execute_transactions(plan.transactions)
                                 st.session_state["ai_plan"] = None
                                 st.session_state["audit_result"] = None
@@ -607,7 +583,6 @@ with tab1:
 
             elif plan.action == "UNKNOWN":
                 st.error(f"🤖 AI could not process this request. Reason: {plan.reasoning}")
-                # play_tts_response(tts_text, key="tts_unknown") # REMOVED
                 st.session_state["ai_plan"] = None
                 st.session_state["audit_result"] = None
 
