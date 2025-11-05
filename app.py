@@ -19,7 +19,7 @@ import random
 import time
 import json
 import io
-import base64 # অডিও প্লেব্যাকের জন্য
+import base64 # অডিও প্লেব্যাক এবং ভিডিওর জন্য
 import traceback # গ্লোবাল এক্সেপশন UI-এর জন্য
 
 # Lottie, Mic Recorder, OpenAI (Whisper)
@@ -122,15 +122,13 @@ try:
 except Exception as e:
     st.error(f"API Key setup error: {e}")
     st.stop()
-    
-# --- ফিক্স: Voice Name-কে Voice ID-তে ম্যাপ করা ---
+
+# --- Voice ID Map (Fix for 404 error) ---
 VOICE_MAP = {
     "Adam": "pNInz6obpgD5RjXjnmxx",
     "Domi": "AZnzlk1XvdvUeBnXmlld",
     "Rachel": "21m00Tcm4TlvDq8ikWAM",
-    # আপনি চাইলে এখানে আরও ভয়েস যোগ করতে পারেন
 }
-# --- ফিক্স শেষ ---
 
 # ------------------------------------------------------------
 # 🔊 TTS HELPER FUNCTION (SDK v2 ফিক্সড)
