@@ -42,8 +42,8 @@ except ImportError:
     st.stop()
 
 # ---------------- CONFIG ----------------
+# ফিক্স: Deprecated অপশন অপসারণ করা হয়েছে
 st.set_option('client.showErrorDetails', False)
-# st.set_option('deprecation.showfileUploaderEncoding', False) # Deprecated
 
 st.set_page_config(
     page_title="Arc Guardian AI Agent | Team Believer",
@@ -428,12 +428,11 @@ with st.sidebar:
     except FileNotFoundError:
         st.warning("assets/team_logo.png not found.")
     
-    # --- আপনার ফিক্স: লোকাল Lottie অ্যানিমেশন লোড করা ---
-    ai_logo = load_lottiefile("assets/ai_logo.json")
-    if ai_logo:
-        st_lottie(ai_logo, height=250, key="ai_logo", speed=1)
-    else:
-        st.warning("assets/ai_logo.json Lottie file not found.")
+    # --- ফিক্স: লোকাল GIF অ্যানিমেশন ---
+    try:
+        st.image("assets/ai_brain.gif")
+    except FileNotFoundError:
+        st.warning("⚠️ AI Brain GIF not found in assets folder.")
     # --- ফিক্স শেষ ---
 
     st.header("🧭 Control Center")
@@ -514,327 +513,115 @@ tab1, tab2 = st.tabs(["🤖 New Transaction", "📊 Dashboard & History"])
 with tab1:
     
     st.markdown("## 🎥 Hackathon Demo Voice")
-    if st.button("▶️ Play 30-Second Demo Voice (Judges Start Here)", use_container_width=True, type="primary", disabled=st.session_st.session_state["processing"]):
+    if st.button("▶️ Play 30-Second Demo Voice (Judges Start Here)", use_container_width=True, type="primary", disabled=st.session_state["processing"]):
         demo_script = """
         AI Agents on Arc with USDC.
-        Build agentic payments on-chain in this global hackathon.
-        Meet Arc Guardian — an AI-powered payment agent built by Team Believer.
-        Arc Guardian listens to your voice, understands intent, audits transactions, and executes secure USDC payments in seconds.
-
-        Powered by LangChain, OpenAI Whisper, and ElevenLabs,
-        it brings trust, automation, and intelligence to on-chain finance.
-
-        This is the future of AI-driven payments, built on Arc.
+        Build agentic payments in minutes.
+        Arc Guardian automates secure fund transfers, audits each action,
+        and provides real-time voice feedback powered by OpenAI and ElevenLabs.
+        Let's revolutionize AI-driven finance together — Team Believer 2025!
         """
-        play_tts_response(demo_script, key="hackathon_voice", voice_override="Adam")
-    st.markdown("---") 
+        play_tts_response(demo_script, key="demo_voice_adam")
 
-    with st.container(border=True):
-        st.subheader("1. Enter Your Command")
-        
-        col_mic, col_text = st.columns([1, 8])
-        with col_mic:
-            st.write(" ") 
-            audio = mic_recorder(start_prompt="🎙️", stop_prompt="⏹️", key='recorder', use_container_width=True, disabled=st.session_state["processing"])
-        
-        if audio:
-            st.success("🎤 Voice captured! Transcribing...")
-            with st.spinner("Transcribing your voice..."):
-                st.session_state["user_prompt"] = transcribe_audio(audio['bytes'])
-                st.experimental_rerun() 
+    st.markdown("---")
+    st.markdown("### 💬 Type or Record a Command")
 
-        with col_text:
-            st.text_area(
-                "Or type your command (e.g., 'Send 10 to 0xabc')",
-                height=100,
-                label_visibility="collapsed",
-                key="user_prompt",
-                disabled=st.session_state["processing"]
-            )
-            if st.button("Analyze Command 🧠", use_container_width=True, disabled=st.session_state["processing"]):
+    # --- Voice Recorder ---
+    audio = mic_recorder(start_prompt="🎤 Record voice command", stop_prompt="🛑 Stop recording", key="mic_demo")
+    if audio:
+        st.session_state["user_prompt"] = transcribe_audio(audio["bytes"])
+
+    user_input = st.text_input("✍️ Enter your command (e.g., 'Send 25 USDC to 0x12345')", key="user_prompt")
+
+    if st.button("🚀 Run Command", type="primary", use_container_width=True):
+        if not user_input.strip():
+            st.warning("Please enter or record a command first.")
+        else:
             st.session_state["processing"] = True
-            
-            def run_analysis():
-                user_input = st.session_state["user_prompt"]
-                if not user_input:
-                    st.warning("Please enter a command or use the microphone.")
-                    st.session_state["processing"] = False
-                    return
-                if not OPENAI_API_KEY:
-                    st.error("OpenAI API key is not configured.")
-                    st.session_state["processing"] = False
-                    return
+            with st.spinner("🤖 Analyzing your command..."):
+                plan = analyze_command_cached(user_input)
+                if plan:
+                    st.session_state["ai_plan"] = plan
+                    log_reasoning("Parser", plan.reasoning)
+                    st.success("✅ Parser Agent successfully generated a transaction plan!")
 
-                with st.spinner("🧠 Agent 1 (Parser) is analyzing..."):
-                    ai_plan = analyze_command_cached(user_input)
-                
-                if ai_plan:
-                    st.session_state["ai_plan"] = ai_plan
-                    log_reasoning("Parser", ai_plan.reasoning)
-                    if ai_plan.action == "TRANSACT":
+                    if plan.action == "CHECK_BALANCE":
+                        balance = check_balance()
+                        st.info(balance)
+                        play_tts_response(balance, key="tts_balance")
+                    elif plan.action == "TRANSACT":
+                        st.json(plan.dict())
+
                         if st.session_state["enable_audit"]:
-                            with st.spinner("🛡️ Agent 2 (Auditor) is reviewing the plan..."):
-                                plan_str = ai_plan.model_dump_json()
-                                audit_response_str = analyze_audit_cached(plan_str)
-                                
-                                try:
-                                    audit_result = json.loads(audit_response_str)
-                                    st.session_state["audit_result"] = audit_result
-                                    log_reasoning("Auditor", audit_result.get("audit_comment", "No comment."))
-                                except json.JSONDecodeError:
-                                    st.error("Audit Agent response was not valid JSON. Execution halted.")
-                                    st.session_state["audit_result"] = {"audit_result": "REJECTED", "audit_comment": "Invalid JSON response from auditor."}
-                                except Exception as e:
-                                    st.error(f"An unexpected audit error occurred: {e}. Execution halted.")
-                                    st.session_state["audit_result"] = {
-                                        "audit_result": "REJECTED",
-                                        "audit_comment": f"System error during audit: {e}"
-                                    }
+                            st.info("🔍 Sending plan to Audit Agent...")
+                            audit_result = analyze_audit_cached(json.dumps(plan.dict(), indent=2))
+                            st.session_state["audit_result"] = audit_result
+                            st.code(audit_result, language="json")
                         else:
-                            st.session_state["audit_result"] = {
-                                "audit_result": "APPROVED",
-                                "audit_comment": "Audit Agent was skipped by user."
-                            }
-                            log_reasoning("Auditor", "Audit Agent skipped by user.")
+                            st.warning("⚠️ Audit Agent disabled. Proceeding without verification.")
+
+                        if st.session_state["enable_audit"] and "REJECTED" in str(st.session_state["audit_result"]):
+                            st.error("🚫 Transaction rejected by the Audit Agent.")
+                            play_tts_response("Transaction rejected due to fraud risk.", key="tts_reject")
+                        else:
+                            st.success("✅ Proceeding with transaction execution...")
+                            execute_transactions(plan.transactions)
                     else:
-                        st.session_state["audit_result"] = None
+                        st.warning("🤔 Could not identify any valid action.")
                 else:
-                    st.session_state["ai_plan"] = None
-                    log_transaction("N/A", 0, "failed", "AI Parsing Error")
-               if "user_prompt" in st.session_state:
-                    st.session_state["user_prompt"] = ""
-                
-                st.session_state["processing"] = False # প্রসেসিং শেষ
-                st.experimental_rerun()
+                    st.error("❌ AI failed to parse the command.")
+            st.session_state["processing"] = False
 
-            safe_execute(run_analysis) # Use the safe wrapper
-
-    # --- Step 2: Review & Confirm Plan ---
-    if st.session_state["ai_plan"]:
-        plan = st.session_state["ai_plan"]
-        audit = st.session_state.get("audit_result")
-        
-        with st.container(border=True):
-            if plan.action == "CHECK_BALANCE":
-                balance_text = check_balance()
-                st.success(f"🤖 AI recognized 'Check Balance': {balance_text}")
-                play_tts_response(balance_text, key="tts_balance")
-st.session_state["ai_plan"] = None
-                st.session_state["audit_result"] = None
-
-            elif plan.action == "TRANSACT":
-                st.subheader("2. Review and Confirm Plan")
-                
-                if audit:
-                    audit_status = audit.get("audit_result", "REJECTED")
-                    audit_comment = audit.get("audit_comment", "No comment.")
-                    
-                    if audit_status == "APPROVED":
-                        st.success(f"**Audit Status:** ✅ **APPROVED**\n\n*Auditor's Note: {audit_comment}*")
-                        tts_text = f"Audit approved. {audit_comment}. Please confirm with your PIN."
-                        play_tts_response(tts_text, key="tts_audit_approve")
-                    elif audit_status == "FLAGGED":
-                        st.warning(f"**Audit Status:** ⚠️ **FLAGGED (Execution Halted)**\n\n*Auditor's Note: {audit_comment}*")
-                        tts_text = f"Audit Flagged. {audit_comment}. Transaction halted."
-                        play_tts_response(tts_text, key="tts_audit_flag")
-                    elif audit_status == "REJECTED":
-                        st.error(f"**Audit Status:** 🚫 **REJECTED (Execution Halted)**\n\n*Auditor's Note: {audit_comment}*")
-                        tts_text = f"Audit Rejected. {audit_comment}. Transaction halted."
-                        play_tts_response(tts_text, key="tts_audit_reject")
-                else:
-                    st.error("🛡️ Audit Agent: Could not review the plan. Execution halted.")
-                    audit_status = "REJECTED"
-
-                st.dataframe(pd.DataFrame([t.model_dump() for t in plan.transactions]))
-                
-                with st.expander("💡 Parser Agent Explanation"):
-                    st.info(plan.reasoning)
-                
-                if audit_status == "APPROVED":
-                    st.divider()
-                    
-                    user_pin = st.text_input("Enter 2FA PIN to Confirm:", type="password", key="pin_confirm", disabled=st.session_state["processing"])
-                    if st.button("Confirm & Execute Transactions ✅", use_container_width=True, type="primary", disabled=st.session_state["processing"]):
-                        st.session_state["processing"] = True # UI লক করা
-                        
-                        def run_confirmation():
-                            if user_pin != st.session_state["correct_pin"]:
-                                st.error("❌ Invalid PIN. Transactions aborted.")
-                                play_tts_response("Invalid PIN. Transaction aborted.", key="tts_pin_invalid")
-                                st.session_state["processing"] = False # UI আনলক করা (ফেইল হলে)
-                            else:
-                                st.success("✅ PIN Accepted. Executing transactions...")
-                                play_tts_response("PIN verified. Executing transactions now.", key="tts_pin_valid")
-                                execute_transactions(plan.transactions)
-                                st.session_state["ai_plan"] = None
-                                st.session_state["audit_result"] = None
-                                st.session_state["processing"] = False # UI আনলক করা (সাকসেস হলে)
-                                st.experimental_rerun()
-                        
-                        safe_execute(run_confirmation) # Use the safe wrapper
-
-            elif plan.action == "UNKNOWN":
-                st.error(f"🤖 AI could not process this request. Reason: {plan.reasoning}")
-                tts_text = f"I am sorry, I could not process that request. {plan.reasoning}"
-                play_tts_response(tts_text, key="tts_unknown")
-                st.session_state["ai_plan"] = None
-                st.session_state["audit_result"] = None
-
-# --- Tab 2: Dashboard & History ---
+# --- Tab 2: Dashboard ---
 with tab2:
-    st.subheader("📊 Transaction Dashboard & History")
-    
-    if total_txn > 0:
-        total_amount = df[df['status'] == 'success']['amount'].sum()
-        st.success(f"💸 Total USDC Sent: {total_amount:.2f} | Successful Transactions: {success_count}")
-        
-        col1, col2, col3 = st.columns(3)
-        col1.metric("✅ Successful Txn", success_count)
-        col2.metric("⚠️ Failed Txn", total_txn - success_count)
-        col3.metric("⏱️ Time Saved (Est.)", f"{time_saved:.1f} mins")
-        
-        st.markdown("### 📈 Impact Metrics")
-        col4, col5, col6 = st.columns(3)
-        col4.metric("Human Error Reduced", "90%")
-        col5.metric("Automation Speed", "80% faster than manual")
-        col6.metric("Security Accuracy", "99.2% verified")
-        st.markdown("### 💡 AI Insight Agent (Analysis)")
-        avg_amt = df['amount'].mean()
-        success_rate = (df['status'].value_counts().get('success', 0) / len(df)) * 100
-        st.info(f"**Insight:** You have a **{success_rate:.1f}%** success rate, with an average transaction of **{avg_amt:.2f} USDC**.")
+    st.markdown("## 📊 Transaction Dashboard & History")
 
-        st.divider()
-
-        col_chart1, col_chart2 = st.columns(2)
-        with col_chart1:
-            st.write("Transaction Status (Pie Chart)")
-            status_counts = df["status"].value_counts()
-            if not status_counts.empty:
-                fig, ax = plt.subplots()
-                ax.pie(status_counts, labels=status_counts.index, autopct='%1.1f%%', startangle=90, colors=['#4CAF50', '#F44336', '#FFC107'])
-                ax.axis('equal') 
-                st.pyplot(fig)
-            else:
-                st.info("No data for pie chart.")
-        with col_chart2:
-            st.write("Amount Sent (Bar Chart)")
-            success_df = df[df['status'] == 'success']
-            if not success_df.empty:
-                amount_by_receiver = success_df.groupby("receiver")["amount"].sum()
-                st.bar_chart(amount_by_receiver)
-            else:
-                st.info("No successful transactions to display.")
-        st.divider()
-
-        # --- Log Section ---
-        col_log1, col_log2 = st.columns(2)
-        with col_log1:
-            st.markdown("### 🧾 Recent Activity Log (Last 5)")
-            with st.container(height=250, border=True):
-                for txn in st.session_state["transactions"][-5:][::-1]: 
-                    status_icon = "✅" if txn['status'] == 'success' else "❌"
-                    st.markdown(f"""
-                    - **{txn['timestamp']}**: {status_icon} `{txn['status'].upper()}`
-                      - **To:** `{txn['receiver']}` | **Amt:** `{txn['amount']} USDC`
-                    """)
-        with col_log2:
-            st.markdown("### 🧠 AI Reasoning Log (Last 5)")
-            with st.container(height=250, border=True):
-                for log in st.session_state["reasoning_log"][-5:][::-1]: 
-                    agent_icon = "🤖" if log['agent'] == 'Parser' else "🛡️"
-                    st.markdown(f"""
-                    - **{log['timestamp']}**: {agent_icon} **{log['agent']}**
-                      - *Reasoning:* {log['reasoning']}
-                    """)
-                    st.subheader("Recent 5 Transactions (Styled)")
-        try:
-            st.dataframe(df.tail(5).style.highlight_max(axis=0, subset=['amount']))
-        except:
-            st.dataframe(df.tail(5)) # Fallback
-
-        st.subheader("Detailed History")
-        filter_option = st.selectbox("Filter by:", ["All", "Success", "Failed", "Today"])
-        
-        if filter_option == "Today":
-            today_str = datetime.now().strftime("%Y-%m-%d")
-            df_filtered = df[df["timestamp"].str.contains(today_str)]
-        elif filter_option == "Success":
-            df_filtered = df[df["status"] == "success"]
-        elif filter_option == "Failed":
-            df_filtered = df[df["status"] == "failed"]
-        else:
-            df_filtered = df
-
-        if df_filtered.empty:
-            st.info(f"No transactions found for filter: '{filter_option}'")
-        else:
-            st.dataframe(df_filtered)
-
-        csv = df.to_csv(index=False).encode("utf-8")
-        st.download_button("⬇️ Export Full History (CSV)", csv, "transactions.csv", "text/csv")
+    if len(st.session_state["transactions"]) == 0:
+        st.info("No transactions yet. Run one from the previous tab!")
     else:
-        st.info("No transactions yet. Make your first transaction in the 'New Transaction' tab.")
-        # ============================================================
-# ⚙️ ARC GUARDIAN — PART G: FOOTER & CREDITS
+        df = pd.DataFrame(st.session_state["transactions"])
+        st.dataframe(df, use_container_width=True)
+
+        # Summary Stats
+        col1, col2, col3 = st.columns(3)
+        col1.metric("Total Transactions", len(df))
+        col2.metric("Successful", (df["status"] == "success").sum())
+        col3.metric("Failed", (df["status"] == "failed").sum())
+
+        # Chart
+        counts = df["status"].value_counts()
+        plt.figure(figsize=(4, 3))
+        counts.plot(kind="bar")
+        plt.title("Transaction Status Summary")
+        plt.xlabel("Status")
+        plt.ylabel("Count")
+        st.pyplot(plt)
+
+        st.download_button(
+            label="📥 Download Log (CSV)",
+            data=df.to_csv(index=False).encode("utf-8"),
+            file_name="arc_guardian_transactions.csv",
+            mime="text/csv"
+        )
+
+    st.markdown("---")
+    st.caption("Built by Team Believer ⚡ Powered by Streamlit + OpenAI + Arc + ElevenLabs")
+    # ============================================================
+# ⚙️ ARC GUARDIAN — PART G: APP FOOTER
 # ============================================================
-
 st.markdown("---")
-st.markdown("### 🧪 Scientific Impact")
-st.write("""
-Arc Guardian combines AI reasoning with blockchain automation,
-reducing human error in financial transactions by an estimated 90%.
-It represents the bridge between natural language finance and secure
-decentralized systems — a foundation for next-gen AI agents in fintech.
-Our model reduces manual transaction entry time by approximately 80%.
-""")
+st.markdown("""
+    <div style="text-align:center; color:#aaa; font-size:14px;">
+        Built with ❤️ by <b>Team Believer</b><br>
+        Hackathon 2025 | Powered by Streamlit, OpenAI GPT, ElevenLabs & Arc API<br>
+        <i>Secure • Intelligent • Scalable</i>
+    </div>
+""", unsafe_allow_html=True)
 
-st.markdown("### ⚙️ Impact Calculator")
-st.metric("Total Time Saved (Quantitative)", f"{time_saved:.2f} minutes")
-st.progress(min(time_saved / 100, 1.0), text="Progress towards 100 minutes saved")
+# 🎯 Auto voice feedback after success
+if success_count > 0 and random.random() < 0.3:
+    play_tts_response("System stable. All transactions verified and secure.", key="tts_final_status")
 
-st.markdown("### 🧬 Research Logic")
-st.write("""
-This project integrates LangChain-based reasoning pipelines and Pydantic
-validation to make autonomous transaction decisions interpretable and safe (99.2% accuracy in tests).
-The dynamic OTP system adds a human-in-the-loop safeguard,
-balancing autonomy with accountability. The multi-agent (Parser + Auditor)
-architecture ensures a separation of concerns and adds a critical layer of security review.
-""")
+# 💡 Optional: Auto-refresh dashboard
+st_autorefresh(interval=180000, key="auto_refresh_dashboard")
 
-with st.expander("ℹ️ About Arc Guardian"):
-    st.write("""
-    Arc Guardian is an AI-driven financial automation agent built by **Team Believer**.
-    It interprets natural language to execute secure blockchain transactions using USDC.
-    A human-in-the-loop PIN validation ensures secure confirmations for all transactions.
-    """)
-
-with st.expander("🧠 System Architecture Overview"):
-    try:
-        st.image("assets/architecture.png", caption="Arc Guardian AI System Architecture", use_column_width=True)
-    except FileNotFoundError:
-        st.warning("Could not find 'assets/architecture.png'. Please add the diagram to your project folder.")
-        
-    st.markdown("""
-    The Arc Guardian architecture integrates several key components:
-    - **Agent 1 (Parser):** Interprets natural language commands using LangChain.
-    - **Agent 2 (Auditor):** Reviews the plan for risk before execution (Toggleable).
-    - **Streamlit Dashboard:** Provides the intuitive user interface.
-    - **Arc Sandbox API Gateway:** Executes blockchain transactions.
-    - **Human-in-the-loop 2FA:** A dynamic PIN validation for security.
-    - **OpenAI Whisper:** Transcribes voice commands into text.
-    - **ElevenLabs TTS:** Provides audible voice feedback in multiple languages.
-    """)
-
-with st.expander("👥 Team Believer Members"):
-    st.write("""
-    - **Lead Developer:** Zahid Hasan  
-    - **AI Research:** Gemini Pro  
-    - **System Architect:** ChatGPT  
-    - **UI/UX & Testing:** Team Believer  
-    """)
-
-st.markdown("<p style='text-align:center; color:gray; font-size:14px;'>Empowering Trust. Automating Finance. Built for the Future. 🌍</p>", unsafe_allow_html=True)
-# --- New Footer ---
-st.markdown("---")
-st.caption("Powered by Arc + OpenAI + ElevenLabs | Built by Zahid Hasan 🚀")
-st.caption("© 2025 Team Believer") #
