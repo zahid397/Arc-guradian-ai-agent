@@ -367,11 +367,21 @@ def execute_transactions(transactions: List[Transaction]):
 # ============================================================
 # 🧭 SIDEBAR
 # ============================================================
-with st.sidebar:
-    try:
-        st.image("assets/team_logo.png", width=150)
-    except FileNotFoundError:
-        st.warning("assets/team_logo.png not found.")
+import base64
+from io import BytesIO
+
+# ...
+st.subheader("📱 Scan for Demo")
+
+try:
+    qr = qrcode.make(APP_URL)
+    buf = BytesIO()
+    qr.save(buf, format="PNG")
+    b64 = base64.b64encode(buf.getvalue()).decode()
+    qr_html = f'<img src="data:image/png;base64,{b64}" width="150" alt="QR Code" style="border-radius:8px;">'
+    st.markdown(qr_html, unsafe_allow_html=True)
+except Exception as e:
+    st.error(f"QR Code Error: {e}")
 
     # Safe GIF load via base64 (fixes MediaFileStorageError)
     gif_b64 = get_asset_as_base64("assets/ai_brain.gif")
@@ -620,3 +630,4 @@ with tab2:
         st.dataframe(log_df.sort_values(by="timestamp", ascending=False), use_container_width=True)
     else:
         st.info("শেষ কমান্ডের জন্য কোনো AI বিশ্লেষণ লগ নেই।")
+
