@@ -358,7 +358,7 @@ with st.sidebar:
     st.toggle("🛡️ Enable Audit Agent", value=st.session_state["enable_audit"], key="enable_audit",
               help="If disabled, transactions will be approved automatically (DANGEROUS).")
 
-    # st.subheader("🗣️ Voice Language") # সরানো হয়েছে
+    # --- ভয়েস ল্যাঙ্গুয়েজ সেকশন সরানো হয়েছে ---
     
     st.divider()
     
@@ -428,7 +428,7 @@ with tab1:
                 st.success("🎤 Voice captured! Transcribing...")
                 with st.spinner("Transcribing your voice..."):
                     st.session_state["user_prompt"] = transcribe_audio(audio['bytes'])
-                st.experimental_rerun() 
+                st.rerun() # ফিক্স: st.experimental_rerun() -> st.rerun()
 
         with col_text:
             st.text_area(
@@ -466,7 +466,7 @@ with tab1:
                                 plan_str = ai_plan.model_dump_json()
                                 audit_response_str = analyze_audit_cached(plan_str)
                                 
-                                # --- ফিক্স ২: JSONDecodeError হ্যান্ডেলিং ---
+                                # --- ফিক্স ২: JSONDecodeError হ্যান্ডেলিং (Hackathon Safe Fallback) ---
                                 try:
                                     audit_result = json.loads(audit_response_str)
                                 except Exception: # ব্রড এক্সেপশন ক্যাচ করা (JSONDecodeError সহ)
@@ -493,7 +493,7 @@ with tab1:
                 #     st.session_state["user_prompt"] = "" 
                 
                 st.session_state["processing"] = False
-                st.experimental_rerun()
+                st.rerun() # ফিক্স: st.experimental_rerun() -> st.rerun()
 
             safe_execute(run_analysis) # Use the safe wrapper
 
@@ -550,7 +550,7 @@ with tab1:
                                 st.session_state["ai_plan"] = None
                                 st.session_state["audit_result"] = None
                                 st.session_state["processing"] = False
-                                st.experimental_rerun()
+                                st.rerun() # ফিক্স: st.experimental_rerun() -> st.rerun()
                         
                         safe_execute(run_confirmation) # Use the safe wrapper
 
