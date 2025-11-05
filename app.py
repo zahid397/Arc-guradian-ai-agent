@@ -524,11 +524,11 @@ with tab1:
                 st.info(info)
                 play_tts_response(info, key="tts_balance")
                 st.session_state["processing"] = False
-            elif plan.action == "TRANSACT":
-            if not plan.transactions:
+                elif plan.action == "TRANSACT":
+    if not plan.transactions:
         st.warning("লেনদেন ইনটেন্ট পাওয়া গেছে, কিন্তু কোনো বৈধ ঠিকানা পাইনি।")
-
-       play_tts_response("ওয়ালেট ঠিকানা বা পরিমাণ পাইনি।", key="tts_no_txn")
+                
+    play_tts_response("ওয়ালেট ঠিকানা বা পরিমাণ পাইনি।", key="tts_no_txn")
         st.session_state["processing"] = False
     else:
         st.success(f"✅ ইনটেন্ট: লেনদেন (মোট {len(plan.transactions)})")
@@ -630,6 +630,7 @@ with tab2:
         st.dataframe(log_df.sort_values(by="timestamp", ascending=False), use_container_width=True)
     else:
         st.info("শেষ কমান্ডের জন্য কোনো AI বিশ্লেষণ লগ নেই।")
+
 
 
 
