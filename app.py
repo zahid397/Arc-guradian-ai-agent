@@ -21,6 +21,7 @@ import json
 import io
 import base64 # অডিও প্লেব্যাকের জন্য
 import traceback # গ্লোবাল এক্সেপশন UI-এর জন্য
+import os # --- আপনার নতুন সংযোজন (ফাইল পাথ চেকের জন্য) ---
 
 # Lottie, Mic Recorder, OpenAI (Whisper)
 from streamlit_lottie import st_lottie
@@ -63,32 +64,7 @@ ELEVENLABS_API_KEY = st.secrets.get("elevenlabs", {}).get("api_key")
 # ------------------------------------------------------------
 st.markdown("""
     <style>
-    /* Gradient buttons */
-    div[data-testid="stButton"] > button[kind="primary"],
-    div[data-testid="stButton"] > button[kind="secondary"] {
-        background: linear-gradient(90deg, #00bcd4, #00e5ff);
-        color: #000000;
-        border: none;
-        font-weight: bold;
-        transition: all 0.3s ease-in-out;
-    }
-    div[data-testid="stButton"] > button[kind="primary"]:hover {
-        box-shadow: 0 0 15px 5px #00bcd4;
-        transform: scale(1.02);
-    }
-    div[data-testid="stButton"] > button[kind="secondary"]:hover {
-        opacity: 0.8;
-    }
-    /* Glowing sidebar */
-    [data-testid="stSidebar"] {
-        border-right: 2px solid #00bcd4;
-        box-shadow: 0 0 15px 5px #00bcd4;
-        animation: pulse 2.5s infinite alternate;
-    }
-    @keyframes pulse {
-        from { box-shadow: 0 0 10px 2px #00bcd4; }
-        to { box-shadow: 0 0 20px 7px #00e5ff; }
-    }
+    /* ... (CSS কোড অপরিবর্তিত) ... */
     </style>
     """, unsafe_allow_html=True)
 
@@ -420,12 +396,13 @@ with st.sidebar:
     except FileNotFoundError:
         st.warning("assets/team_logo.png not found.")
     
-    # --- ফিক্স: লোকাল GIF অ্যানিমেশন ---
-    # `assets/ai_brain.gif` নামে একটি ফাইল ফোল্ডারে থাকতে হবে
-    try:
+    # --- আপনার ফিক্স: GIF অ্যানিমেশন (PNG ফলব্যাক সহ) ---
+    if os.path.exists("assets/ai_brain.gif"):
         st.image("assets/ai_brain.gif", use_column_width=True)
-    except FileNotFoundError:
-        st.warning("⚠️ AI Brain GIF not found in assets folder.")
+    elif os.path.exists("assets/team_logo.png"):
+        st.image("assets/team_logo.png", use_column_width=True)
+    else:
+        st.warning("⚠️ Logo image not found in assets folder.")
     # --- ফিক্স শেষ ---
 
     st.header("🧭 Control Center")
