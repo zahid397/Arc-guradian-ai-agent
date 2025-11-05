@@ -19,11 +19,11 @@ import random
 import time
 import json
 import io
-import base64 # For audio playback
+import base64 # For asset encoding
 import traceback # For Global Exception UI
+import os # For file path checking
 
-# Lottie, Mic Recorder, OpenAI (Whisper)
-from streamlit_lottie import st_lottie
+# Mic Recorder, OpenAI (Whisper)
 from streamlit_mic_recorder import mic_recorder
 import openai
 
@@ -34,12 +34,7 @@ from streamlit_autorefresh import st_autorefresh
 import qrcode
 from PIL import Image
 
-# ElevenLabs
-try:
-    from elevenlabs import ElevenLabs
-except ImportError:
-    st.error("❌ ElevenLabs library missing. Please add `elevenlabs` in requirements.txt")
-    st.stop()
+# --- ElevenLabs has been REMOVED ---
 
 # ---------------- CONFIG ----------------
 st.set_option('client.showErrorDetails', False)
@@ -56,7 +51,7 @@ st.set_page_config(
 # ------------------------------------------------------------
 OPENAI_API_KEY = st.secrets.get("openai", {}).get("api_key")
 ARC_API_KEY = st.secrets.get("arc", {}).get("api_key")
-ELEVENLABS_API_KEY = st.secrets.get("elevenlabs", {}).get("api_key")
+# ELEVENLABS_API_KEY = st.secrets.get("elevenlabs", {}).get("api_key") # REMOVED
 
 # ------------------------------------------------------------
 # 🎨 UI POLISH (CSS INJECTION)
@@ -107,70 +102,21 @@ def get_llm():
         llm = ChatOpenAI(model="gpt-3.5-turbo", api_key=OPENAI_API_KEY)
         return llm
 
-@st.cache_resource
-def get_elevenlabs_client():
-    """Initializes the ElevenLabs client."""
-    if not ELEVENLABS_API_KEY:
-        st.warning("🔑 ElevenLabs API key missing in secrets.toml. Voice will be disabled.")
-        return None
-    return ElevenLabs(api_key=ELEVENLABS_API_KEY)
+# --- ElevenLabs client REMOVED ---
 
 try:
     llm = get_llm()
     client = openai.OpenAI(api_key=OPENAI_API_KEY)
-    eleven_client = get_elevenlabs_client() # Initialize new client
 except Exception as e:
     st.error(f"API Key setup error: {e}")
     st.stop()
 
-# --- Voice ID Map (Fix for 404 error) ---
-VOICE_MAP = {
-    "Adam": "pNInz6obpgD5RjXjnmxx",
-    "Domi": "AZnzlk1XvdvUeBnXmlld",
-    "Rachel": "21m00Tcm4TlvDq8ikWAM",
-}
-
 # ------------------------------------------------------------
-# 🔊 TTS HELPER FUNCTION (SDK v2)
+# 🔊 TTS HELPER FUNCTION (REMOVED)
 # ------------------------------------------------------------
-@st.cache_data
-def generate_tts(text: str, voice_name="Adam"):
-    """Generate AI voice using ElevenLabs and return bytes."""
-    if not eleven_client: 
-        st.warning("🔑 ElevenLabs client not available. Skipping TTS.")
-        return None
-    try:
-        voice_id = VOICE_MAP.get(voice_name, "pNInz6obpgD5RjXjnmxx") # Fallback to Adam
-        
-        audio_bytes_iterator = eleven_client.text_to_speech.convert(
-            voice_id=voice_id,  # Use the real ID
-            model_id="eleven_multilingual_v2",
-            text=text
-        )
-        audio_bytes = b"".join([chunk for chunk in audio_bytes_iterator])
-        return audio_bytes
-            
-    except Exception as e:
-        st.error(f"TTS Generation failed: {e}")
-        return None
-
 def play_tts_response(text, key="tts_playback", voice_override=None):
-    """Generates and plays audio in the browser via st.audio."""
-    selected_voice = voice_override if voice_override else st.session_state.get("selected_voice", "Adam")
-    
-    with st.spinner(f"🎧 Generating AI voice ({selected_voice})..."):
-        audio_bytes = generate_tts(text, voice_name=selected_voice)
-        
-    if audio_bytes:
-        b64 = base64.b64encode(audio_bytes).decode()
-        audio_html = f"""
-            <audio autoplay="true" style="display: none;">
-                <source src="data:audio/mp3;base64,{b64}" type="audio/mp3">
-            </audio>
-            """
-        st.markdown(audio_html, unsafe_allow_html=True)
-    else:
-        st.info("TTS unavailable – check API key or cloud environment.")
+    """Voice output is disabled for cloud stability."""
+    pass # Do nothing
 
 # ============================================================
 # 🧠 ARC GUARDIAN — PART B: AGENTS SETUP
@@ -258,8 +204,8 @@ if "mock_balance" not in st.session_state:
     st.session_state["mock_balance"] = 120.0
 if "enable_audit" not in st.session_state:
     st.session_state["enable_audit"] = True
-if "selected_voice" not in st.session_state:
-    st.session_state["selected_voice"] = "Adam"
+# if "selected_voice" not in st.session_state: # REMOVED
+#     st.session_state["selected_voice"] = "Adam"
 if "processing" not in st.session_state:
     st.session_state["processing"] = False
 
@@ -297,6 +243,25 @@ def load_lottiefile(filepath: str):
             return json.load(f)
     except FileNotFoundError:
         st.warning(f"Lottie file not found at: {filepath}")
+        return None
+
+def get_asset_as_base64(path):
+    """Encodes a local asset file into Base64 Data URI."""
+    try:
+        with open(path, "rb") as f:
+            data = f.read()
+        if path.endswith(".mp4"):
+            mime_type = "video/mp4"
+        elif path.endswith(".png"):
+            mime_type = "image/png"
+        elif path.endswith(".gif"):
+            mime_type = "image/gif"
+        else:
+            mime_type = "application/octet-stream"
+        b64 = base64.b64encode(data).decode()
+        return f"data:{mime_type};base64,{b64}"
+    except FileNotFoundError:
+        st.warning(f"Asset file not found: {path}")
         return None
 
 def check_balance():
@@ -364,11 +329,7 @@ def execute_transactions(transactions: List[Transaction]):
                 log_transaction(txn.receiver, txn.amount, "success", "SIMULATED_TXN_ID")
                 st.toast(f"Sent {txn.amount} USDC successfully! ✅")
                 
-                if st.session_state["selected_voice"] == "Domi":
-                    tts_text = "লেনদেন সম্পন্ন হয়েছে, ধন্যবাদ।"
-                else:
-                    tts_text = f"Transaction completed successfully! Sent {txn.amount} USDC to address ending with {txn.receiver[-4:]}."
-                play_tts_response(tts_text, key="tts_exec_sim")
+                # play_tts_response(tts_text, key="tts_exec_sim") # REMOVED
                 
                 if success_anim:
                     st_lottie(success_anim, height=180, key=f"success_{txn.receiver}_{random.randint(0, 1000)}")
@@ -392,11 +353,7 @@ def execute_transactions(transactions: List[Transaction]):
                         log_transaction(txn.receiver, txn.amount, "success", txn_id)
                         st.toast(f"Sent {txn.amount} USDC successfully! ✅")
                         
-                        if st.session_state["selected_voice"] == "Domi":
-                            tts_text = "লেনদেন সম্পন্ন হয়েছে, ধন্যবাদ।"
-                        else:
-                            tts_text = f"Transaction completed successfully! Sent {txn.amount} USDC to address ending with {txn.receiver[-4:]}."
-                        play_tts_response(tts_text, key="tts_exec_real")
+                        # play_tts_response(tts_text, key="tts_exec_real") # REMOVED
                         
                         if success_anim:
                             st_lottie(success_anim, height=180, key=f"success_{txn.receiver}_{random.randint(0, 1000)}")
@@ -420,9 +377,9 @@ with st.sidebar:
     except FileNotFoundError:
         st.warning("assets/team_logo.png not found.")
     
-    # --- ফিক্স: GIF অ্যানিমেশন অপসারণ করা হয়েছে ---
-    # (ফাইলটি না থাকলে অ্যাপ ক্র্যাশ করবে না)
-    # --- ফিক্স শেষ ---
+    # --- FIX: Removed GIF/Lottie animation from sidebar ---
+    st.markdown("---") # Replaced animation with a simple divider
+    # --- END FIX ---
 
     st.header("🧭 Control Center")
     
@@ -433,8 +390,8 @@ with st.sidebar:
     if not ARC_API_KEY: st.warning("Arc API Key not found.")
     else: st.success("API keys loaded successfully.")
     
-    if not ELEVENLABS_API_KEY:
-        st.warning("ElevenLabs API Key not found. Voice output will be skipped.")
+    # if not ELEVENLABS_API_KEY: # REMOVED
+    #     st.warning("ElevenLabs API Key not found. Voice output will be skipped.")
     
     st.toggle("🧪 Simulation Mode", value=st.session_state["simulation_mode"], key="simulation_mode", 
               help="If on, no real API calls will be made.")
@@ -445,12 +402,7 @@ with st.sidebar:
     st.toggle("🛡️ Enable Audit Agent", value=st.session_state["enable_audit"], key="enable_audit",
               help="If disabled, transactions will be approved automatically (DANGEROUS).")
 
-    st.subheader("🗣️ Voice Language")
-    st.selectbox(
-        "AI Voice (English/Bangla)",
-        options=["Adam", "Domi", "Rachel"], # Adam (Eng), Domi (Multi/Bangla)
-        key="selected_voice"
-    )
+    # --- Voice Language Selector REMOVED ---
     
     st.divider()
     
@@ -501,21 +453,7 @@ tab1, tab2 = st.tabs(["🤖 New Transaction", "📊 Dashboard & History"])
 # --- Tab 1: New Transaction ---
 with tab1:
     
-    st.markdown("## 🎥 Hackathon Demo Voice")
-    if st.button("▶️ Play 30-Second Demo Voice (Judges Start Here)", use_container_width=True, type="primary", disabled=st.session_state["processing"]):
-        demo_script = """
-        AI Agents on Arc with USDC.
-        Build agentic payments on-chain in this global hackathon.
-
-        Meet Arc Guardian — an AI-powered payment agent built by Team Believer.
-        Arc Guardian listens to your voice, understands intent, audits transactions, and executes secure USDC payments in seconds.
-
-        Powered by LangChain, OpenAI Whisper, and ElevenLabs,
-        it brings trust, automation, and intelligence to on-chain finance.
-
-        This is the future of AI-driven payments, built on Arc.
-        """
-        play_tts_response(demo_script, key="hackathon_voice", voice_override="Adam")
+    # --- Demo Voice Button REMOVED ---
     
     st.markdown("---") 
 
@@ -614,7 +552,7 @@ with tab1:
             if plan.action == "CHECK_BALANCE":
                 balance_text = check_balance()
                 st.success(f"🤖 AI recognized 'Check Balance': {balance_text}")
-                play_tts_response(balance_text, key="tts_balance")
+                # play_tts_response(balance_text, key="tts_balance") # REMOVED
                 st.session_state["ai_plan"] = None
                 st.session_state["audit_result"] = None
 
@@ -627,16 +565,13 @@ with tab1:
                     
                     if audit_status == "APPROVED":
                         st.success(f"**Audit Status:** ✅ **APPROVED**\n\n*Auditor's Note: {audit_comment}*")
-                        tts_text = f"Audit approved. {audit_comment}. Please confirm with your PIN."
-                        play_tts_response(tts_text, key="tts_audit_approve")
+                        # play_tts_response(tts_text, key="tts_audit_approve") # REMOVED
                     elif audit_status == "FLAGGED":
                         st.warning(f"**Audit Status:** ⚠️ **FLAGGED (Execution Halted)**\n\n*Auditor's Note: {audit_comment}*")
-                        tts_text = f"Audit Flagged. {audit_comment}. Transaction halted."
-                        play_tts_response(tts_text, key="tts_audit_flag")
+                        # play_tts_response(tts_text, key="tts_audit_flag") # REMOVED
                     elif audit_status == "REJECTED":
                         st.error(f"**Audit Status:** 🚫 **REJECTED (Execution Halted)**\n\n*Auditor's Note: {audit_comment}*")
-                        tts_text = f"Audit Rejected. {audit_comment}. Transaction halted."
-                        play_tts_response(tts_text, key="tts_audit_reject")
+                        # play_tts_response(tts_text, key="tts_audit_reject") # REMOVED
                 else:
                     st.error("🛡️ Audit Agent: Could not review the plan. Execution halted.")
                     audit_status = "REJECTED"
@@ -657,11 +592,11 @@ with tab1:
                         def run_confirmation():
                             if user_pin != st.session_state["correct_pin"]:
                                 st.error("❌ Invalid PIN. Transactions aborted.")
-                                play_tts_response("Invalid PIN. Transaction aborted.", key="tts_pin_invalid")
+                                # play_tts_response("Invalid PIN. Transaction aborted.", key="tts_pin_invalid") # REMOVED
                                 st.session_state["processing"] = False
                             else:
                                 st.success("✅ PIN Accepted. Executing transactions...")
-                                play_tts_response("PIN verified. Executing transactions now.", key="tts_pin_valid")
+                                # play_tts_response("PIN verified. Executing transactions now.", key="tts_pin_valid") # REMOVED
                                 execute_transactions(plan.transactions)
                                 st.session_state["ai_plan"] = None
                                 st.session_state["audit_result"] = None
@@ -672,8 +607,7 @@ with tab1:
 
             elif plan.action == "UNKNOWN":
                 st.error(f"🤖 AI could not process this request. Reason: {plan.reasoning}")
-                tts_text = f"I am sorry, I could not process that request. {plan.reasoning}"
-                play_tts_response(tts_text, key="tts_unknown")
+                # play_tts_response(tts_text, key="tts_unknown") # REMOVED
                 st.session_state["ai_plan"] = None
                 st.session_state["audit_result"] = None
 
@@ -823,7 +757,7 @@ with st.expander("🧠 System Architecture Overview"):
     - **Arc Sandbox API Gateway:** Executes blockchain transactions.
     - **Human-in-the-loop 2FA:** A dynamic PIN validation for security.
     - **OpenAI Whisper:** Transcribes voice commands into text.
-    - **ElevenLabs TTS:** Provides audible voice feedback in multiple languages.
+    - **ElevenLabs TTS:** (Disabled for cloud deployment) Provides audible voice feedback.
     """)
 
 with st.expander("👥 Team Believer Members"):
@@ -838,5 +772,5 @@ st.markdown("<p style='text-align:center; color:gray; font-size:14px;'>Empowerin
 
 # --- New Footer ---
 st.markdown("---")
-st.caption("Powered by Arc + OpenAI + ElevenLabs | Built by Zahid Hasan 🚀")
+st.caption("Powered by Arc + OpenAI | Built by Zahid Hasan 🚀") # ElevenLabs সরানো হয়েছে
 st.caption("© 2025 Team Believer")
