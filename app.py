@@ -21,7 +21,7 @@ import json
 import io
 import base64 # অডিও প্লেব্যাকের জন্য
 import traceback # গ্লোবাল এক্সেপশন UI-এর জন্য
-import os # --- আপনার নতুন সংযোজন (ফাইল পাথ চেকের জন্য) ---
+import os # ফাইল পাথ চেকের জন্য
 
 # Lottie, Mic Recorder, OpenAI (Whisper)
 from streamlit_lottie import st_lottie
@@ -391,12 +391,8 @@ def execute_transactions(transactions: List[Transaction]):
 # ⚙️ ARC GUARDIAN — PART E: SIDEBAR UI
 # ============================================================
 with st.sidebar:
-    try:
-        st.image("assets/team_logo.png", width=150)
-    except FileNotFoundError:
-        st.warning("assets/team_logo.png not found.")
     
-    # --- আপনার ফিক্স: GIF অ্যানিমেশন (PNG ফলব্যাক সহ) ---
+    # --- ফিক্স: ডুপ্লিকেট লোগো অপসারণ এবং GIF/PNG ফলব্যাক ---
     if os.path.exists("assets/ai_brain.gif"):
         st.image("assets/ai_brain.gif", use_column_width=True)
     elif os.path.exists("assets/team_logo.png"):
