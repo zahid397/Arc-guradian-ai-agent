@@ -63,7 +63,32 @@ ELEVENLABS_API_KEY = st.secrets.get("elevenlabs", {}).get("api_key")
 # ------------------------------------------------------------
 st.markdown("""
     <style>
-    /* ... (CSS কোড অপরিবর্তিত) ... */
+    /* Gradient buttons */
+    div[data-testid="stButton"] > button[kind="primary"],
+    div[data-testid="stButton"] > button[kind="secondary"] {
+        background: linear-gradient(90deg, #00bcd4, #00e5ff);
+        color: #000000;
+        border: none;
+        font-weight: bold;
+        transition: all 0.3s ease-in-out;
+    }
+    div[data-testid="stButton"] > button[kind="primary"]:hover {
+        box-shadow: 0 0 15px 5px #00bcd4;
+        transform: scale(1.02);
+    }
+    div[data-testid="stButton"] > button[kind="secondary"]:hover {
+        opacity: 0.8;
+    }
+    /* Glowing sidebar */
+    [data-testid="stSidebar"] {
+        border-right: 2px solid #00bcd4;
+        box-shadow: 0 0 15px 5px #00bcd4;
+        animation: pulse 2.5s infinite alternate;
+    }
+    @keyframes pulse {
+        from { box-shadow: 0 0 10px 2px #00bcd4; }
+        to { box-shadow: 0 0 20px 7px #00e5ff; }
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -97,6 +122,15 @@ try:
 except Exception as e:
     st.error(f"API Key setup error: {e}")
     st.stop()
+    
+# --- ফিক্স: Voice Name-কে Voice ID-তে ম্যাপ করা ---
+VOICE_MAP = {
+    "Adam": "pNInz6obpgD5RjXjnmxx",
+    "Domi": "AZnzlk1XvdvUeBnXmlld",
+    "Rachel": "21m00Tcm4TlvDq8ikWAM",
+    # আপনি চাইলে এখানে আরও ভয়েস যোগ করতে পারেন
+}
+# --- ফিক্স শেষ ---
 
 # ------------------------------------------------------------
 # 🔊 TTS HELPER FUNCTION (SDK v2 ফিক্সড)
@@ -108,14 +142,14 @@ def generate_tts(text: str, voice_name="Adam"):
         st.warning("🔑 ElevenLabs client not available. Skipping TTS.")
         return None
     try:
-        # --- ফিক্স: .lower() অপসারণ করা হয়েছে। ভয়েসের নাম এখন Case-Sensitive ---
+        # ফিক্স: voice_id এখন VOICE_MAP থেকে নেওয়া হচ্ছে
+        voice_id = VOICE_MAP.get(voice_name, "pNInz6obpgD5RjXjnmxx") # ফলব্যাক হিসাবে Adam
+        
         audio_bytes_iterator = eleven_client.text_to_speech.convert(
-            voice_id=voice_name,  # যেমন: "Adam", "Domi"
+            voice_id=voice_id,  # আসল ID ব্যবহার করা
             model_id="eleven_multilingual_v2",
             text=text
         )
-        # --- ফিক্স শেষ ---
-        
         audio_bytes = b"".join([chunk for chunk in audio_bytes_iterator])
         return audio_bytes
             
@@ -516,11 +550,9 @@ with tab1:
         col_mic, col_text = st.columns([1, 8])
         with col_mic:
             st.write(" ") 
-            # ফিক্স: `disabled` আর্গুমেন্টটি `mic_recorder` থেকে সরানো হয়েছে
             audio = mic_recorder(start_prompt="🎙️", stop_prompt="⏹️", key='recorder', use_container_width=True)
         
         if audio:
-            # ফিক্স: প্রসেসিং চলাকালীন নতুন ভয়েস ইনপুট ব্লক করা
             if st.session_state["processing"]:
                 st.warning("Please wait for the current analysis to finish.")
             else:
@@ -539,7 +571,7 @@ with tab1:
             )
 
         if st.button("Analyze Command 🧠", use_container_width=True, disabled=st.session_state["processing"]):
-            st.session_state["processing"] = True # UI লক করা
+            st.session_state["processing"] = True
             
             def run_analysis():
                 user_input = st.session_state["user_prompt"]
@@ -593,7 +625,7 @@ with tab1:
                 if "user_prompt" in st.session_state:
                     st.session_state["user_prompt"] = ""
                 
-                st.session_state["processing"] = False # প্রসেসিং শেষ
+                st.session_state["processing"] = False
                 st.experimental_rerun()
 
             safe_execute(run_analysis) # Use the safe wrapper
@@ -645,20 +677,20 @@ with tab1:
                     user_pin = st.text_input("Enter 2FA PIN to Confirm:", type="password", key="pin_confirm", disabled=st.session_state["processing"])
                     
                     if st.button("Confirm & Execute Transactions ✅", use_container_width=True, type="primary", disabled=st.session_state["processing"]):
-                        st.session_state["processing"] = True # UI লক করা
+                        st.session_state["processing"] = True
                         
                         def run_confirmation():
                             if user_pin != st.session_state["correct_pin"]:
                                 st.error("❌ Invalid PIN. Transactions aborted.")
                                 play_tts_response("Invalid PIN. Transaction aborted.", key="tts_pin_invalid")
-                                st.session_state["processing"] = False # UI আনলক করা (ফেইল হলে)
+                                st.session_state["processing"] = False
                             else:
                                 st.success("✅ PIN Accepted. Executing transactions...")
                                 play_tts_response("PIN verified. Executing transactions now.", key="tts_pin_valid")
                                 execute_transactions(plan.transactions)
                                 st.session_state["ai_plan"] = None
                                 st.session_state["audit_result"] = None
-                                st.session_state["processing"] = False # UI আনলক করা (সাকসেস হলে)
+                                st.session_state["processing"] = False
                                 st.experimental_rerun()
                         
                         safe_execute(run_confirmation) # Use the safe wrapper
@@ -832,4 +864,4 @@ st.markdown("<p style='text-align:center; color:gray; font-size:14px;'>Empowerin
 # --- New Footer ---
 st.markdown("---")
 st.caption("Powered by Arc + OpenAI + ElevenLabs | Built by Zahid Hasan 🚀")
-st.caption("© 2025 Team Believer") # ব্র্যান্ডেড ফুটার
+st.caption("© 2025 Team Believer")
