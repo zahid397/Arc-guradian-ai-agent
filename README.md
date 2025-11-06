@@ -9,13 +9,28 @@
   <i>Built for hackathons &amp; scientific showcases 🌍</i>
 </p>
 
----
+
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Framework-Streamlit-FF4B4B?logo=streamlit" />
+  <img src="https://img.shields.io/badge/AI-Agent-blue?logo=python" />
+  <img src="https://img.shields.io/badge/API-Arc%20API-8A2BE2" />
+  <img src="https://img.shields.io/badge/Language-Python-FFD43B?logo=python" />
+  <img src="https://img.shields.io/github/stars/zahid397/arc-guardian-ai-agent?style=social" />
+</p>
+
+
 
 <p align="center">
   <img src="https://readme-typing-svg.herokuapp.com?color=00CFFF&center=true&lines=AI+Payment+Automation;Smart+Finance+Agent;USDC+Testnet+Executor;Powered+by+Arc+API" />
 </p>
 
----
+
+
+> 🧠 Arc Guardian bridges **AI autonomy** and **secure finance automation** —  
+> empowering agents to analyze, verify, and execute transactions safely in real time.
+
+
 
 ## 🚀 Features
 - 🤖 **AI-driven transaction parsing &amp; smart auditing**  
@@ -23,21 +38,21 @@
 - 🧠 **Dual-agent system for risk detection &amp; analysis**  
 - 🏦 **Simulation + Real-mode USDC payment execution (Testnet)**  
 
----
+
 
 ## 🏗️ Architecture
 <p align="center">
   <img src="assets/architecture.png" width="850" alt="System Architecture Diagram">
 </p>
 
----
+
 
 ## 🧑‍💻 Team Logo
 <p align="center">
-  <img src="assets/team_logo.png" width="180" alt="Team Believer Logo">
+  <img src="assets/team_logo.png" width="200" alt="Team Believer Logo">
 </p>
 
----
+
 
 ## 🛠️ How to Run
 ```bash
@@ -75,7 +90,6 @@ Component	Description
 
 
 
-
 ⭐ Support the Project
 
 If you like Arc Guardian AI Agent, give it a ⭐ on GitHub —
@@ -83,7 +97,6 @@ your support helps others discover the project and keeps it growing 💖
 
 <p align="center">
   <a href="https://github.com/zahid397/arc-guardian-ai-agent/stargazers">
-    <img src="https://img.shields.io/github/stars/zahid397/arc-guardian-ai-agent?style=social" alt="GitHub Stars">
+    <img src="https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExdTFzM2Z2NXc2a3ZvaWtnbWZpY3M4Y2NhcGc3dmRqa2Z6MmRzYWZxZCZlcD12MV9naWZzX3NlYXJjaCZjdD1n/yoJC2A59OCZHs1LXvW/giphy.gif" width="180" alt="Star the repo animation">
   </a>
 </p>
-```
