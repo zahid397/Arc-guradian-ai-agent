@@ -23,12 +23,10 @@ import base64 # QR কোডের জন্য
 import traceback # গ্লোবাল এক্সেপশন UI-এর জন্য
 import os # ফাইল পাথ চেকের জন্য
 
-# Mic Recorder
+# Mic Recorder (ফ্রি ভয়েসের জন্য SpeechRecognition সহ)
 from streamlit_mic_recorder import mic_recorder
-import openai # এটি langchain-এর জন্য প্রয়োজন
-
-# --- 🔄 আপডেটেড ইম্পোর্ট: ফ্রি ভয়েস রিকগনিশন ---
 import speech_recognition as sr
+import openai # (LLM কলের জন্য এটি থাকবে)
 
 # অটো-রিফ্রেশ
 from streamlit_autorefresh import st_autorefresh
@@ -41,6 +39,7 @@ from PIL import Image
 
 # ---------------- CONFIG ----------------
 st.set_option('client.showErrorDetails', False)
+# st.set_option('deprecation.showfileUploaderEncoding', False) # Deprecated
 
 st.set_page_config(
     page_title="Arc Guardian AI Agent | Team Believer",
@@ -108,9 +107,7 @@ def get_llm():
 
 try:
     llm = get_llm()
-    # client object-টি এখন আর transcribe_audio-এর জন্য দরকার নেই,
-    # কিন্তু langchain ব্যাকগ্রাউন্ডে এটি ব্যবহার করতে পারে, তাই রাখা হলো।
-    client = openai.OpenAI(api_key=OPENAI_API_KEY) 
+    client = openai.OpenAI(api_key=OPENAI_API_KEY)
 except Exception as e:
     st.error(f"API Key setup error: {e}")
     st.stop()
@@ -187,7 +184,6 @@ except Exception as e:
     st.error(f"Audit Agent setup error: {e}")
     st.stop()
 
-
 # ============================================================
 # ⚙️ ARC GUARDIAN — PART C: SESSION STATE
 # ============================================================
@@ -209,9 +205,10 @@ if "mock_balance" not in st.session_state:
     st.session_state["mock_balance"] = 120.0
 if "enable_audit" not in st.session_state:
     st.session_state["enable_audit"] = True
+# if "selected_voice" not in st.session_state: # সরানো হয়েছে
+#    st.session_state["selected_voice"] = "Adam"
 if "processing" not in st.session_state:
     st.session_state["processing"] = False
-
 
 # ============================================================
 # ⚙️ ARC GUARDIAN — PART D: HELPER FUNCTIONS
@@ -225,34 +222,28 @@ def safe_execute(func, *args, **kwargs):
         st.error(f"⚠️ Unexpected Runtime Error: {e}")
         st.code(traceback.format_exc()) # Shows traceback
 
-# --- 🔄 আপডেটেড ফাংশন: ফ্রি ভয়েস রিকগনিশন ---
 @st.cache_data(show_spinner=False)
 def transcribe_audio(audio_bytes):
-    """Transcribes audio to text using Google's free web API."""
+    """Transcribes audio to text using Google's free speech_recognition library."""
+    recognizer = sr.Recognizer()
     try:
-        # অডিও বাইটগুলো `streamlit_mic_recorder` থেকে WAV ফরম্যাটে আসে
+        # অডিও বাইটসকে অডিও ফাইল হিসাবে লোড করুন
+        with io.BytesIO(audio_bytes) as audio_file_data:
+            with sr.AudioFile(audio_file_data) as source:
+                audio_data = recognizer.record(source)
         
-        r = sr.Recognizer()
-        
-        # বাইটগুলোকে একটি অডিও ফাইল হিসেবে লোড করুন
-        with sr.AudioFile(io.BytesIO(audio_bytes)) as source:
-            audio_data = r.record(source) # সম্পূর্ণ অডিও ফাইলটি পড়ুন
-        
-        # Google Web Speech API ব্যবহার করে টেক্সট রিকগনাইজ করুন (ফ্রি)
-        text = r.recognize_google(audio_data)
+        # গুগল ওয়েব স্পিচ API ব্যবহার করে ট্রান্সক্রাইব করুন (ফ্রি)
+        text = recognizer.recognize_google(audio_data)
         return text
-
     except sr.UnknownValueError:
-        st.warning("Google Speech Recognition could not understand the audio.")
+        st.warning("Google Speech Recognition could not understand audio.")
         return ""
     except sr.RequestError as e:
         st.error(f"Could not request results from Google Speech Recognition service; {e}")
         return ""
     except Exception as e:
-        # আগের OpenAI 429 error এড়ানোর জন্য এই সাধারণ ত্রুটি দেখানো হচ্ছে
         st.error(f"Voice transcription failed: {e}")
         return ""
-# --- 🔄 আপডেটেড ফাংশন শেষ ---
 
 def check_balance():
     """Simulates a dynamic mock balance."""
@@ -365,6 +356,8 @@ with st.sidebar:
     if not ARC_API_KEY: st.warning("Arc API Key not found.")
     else: st.success("API keys loaded successfully.")
     
+    # if not ELEVENLABS_API_KEY: # সরানো হয়েছে
+    
     st.toggle("🧪 Simulation Mode", value=st.session_state["simulation_mode"], key="simulation_mode", 
               help="If on, no real API calls will be made.")
     
@@ -436,14 +429,15 @@ with tab1:
         col_mic, col_text = st.columns([1, 8])
         with col_mic:
             st.write(" ") 
-            audio = mic_recorder(start_prompt="🎙️", stop_prompt="⏹️", key='recorder', use_container_width=True)
+            # --- 🔄 ফিক্স: অডিও ফরম্যাট "wav" নির্দিষ্ট করা হলো ---
+            audio = mic_recorder(start_prompt="🎙️", stop_prompt="⏹️", key='recorder', use_container_width=True, format="wav")
         
         if audio:
             if st.session_state["processing"]:
                 st.warning("Please wait for the current analysis to finish.")
             else:
                 st.success("🎤 Voice captured! Transcribing...")
-                with st.spinner("Transcribing your voice (Free Service)..."): # পরিবর্তিত স্পিনার টেক্সট
+                with st.spinner("Transcribing your voice..."):
                     st.session_state["user_prompt"] = transcribe_audio(audio['bytes'])
                 st.rerun() # ফিক্স: st.experimental_rerun() -> st.rerun()
 
@@ -507,7 +501,7 @@ with tab1:
                 
                 # --- ফিক্স ১: StreamlitAPIException ফিক্স (লাইনটি সরানো হয়েছে) ---
                 # if "user_prompt" in st.session_state:
-                #     st.session_state["user_prompt"] = "" 
+                #    st.session_state["user_prompt"] = "" 
                 
                 st.session_state["processing"] = False
                 st.rerun() # ফিক্স: st.experimental_rerun() -> st.rerun()
@@ -540,9 +534,9 @@ with tab1:
                         st.warning(f"**Audit Status:** ⚠️ **FLAGGED (Execution Halted)**\n\n*Auditor's Note: {audit_comment}*")
                     elif audit_status == "REJECTED":
                         st.error(f"**Audit Status:** 🚫 **REJECTED (Execution Halted)**\n\n*Auditor's Note: {audit_comment}*")
-                else:
-                    st.error("🛡️ Audit Agent: Could not review the plan. Execution halted.")
-                    audit_status = "REJECTED"
+                    else:
+                        st.error("🛡️ Audit Agent: Could not review the plan. Execution halted.")
+                        audit_status = "REJECTED"
 
                 st.dataframe(pd.DataFrame([t.model_dump() for t in plan.transactions]))
                 
@@ -721,7 +715,7 @@ with st.expander("🧠 System Architecture Overview"):
     - **Streamlit Dashboard:** Provides the intuitive user interface.
     - **Arc Sandbox API Gateway:** Executes blockchain transactions.
     - **Human-in-the-loop 2FA:** A dynamic PIN validation for security.
-    - **OpenAI Whisper:** Transcribes voice commands into text.
+    - **SpeechRecognition:** (Free) Transcribes voice commands into text.
     - **ElevenLabs TTS:** (Disabled for cloud deployment) Provides audible voice feedback.
     """)
 
