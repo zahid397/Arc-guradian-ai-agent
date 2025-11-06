@@ -76,6 +76,8 @@ Built for hackathons & scientific showcases.
 <p align="center">
   <img src="assets/demo.gif" width="650" alt="Arc Guardian Demo Animation">
 </p>
+---
+
 🧠 Tech Stack
 
 Component	Description
@@ -101,4 +103,3 @@ your support helps others discover the project and keeps it growing 💖
   </a>
 </p>
 ```
----
