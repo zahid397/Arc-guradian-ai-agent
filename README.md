@@ -19,6 +19,7 @@
   <img src="https://img.shields.io/github/stars/zahid397/arc-guardian-ai-agent?style=social" />
 </p>
 
+<a href="https://github.com/zahid397/arc-guardian-ai-agent/stargazers">
 ---
 
 <p align="center">
