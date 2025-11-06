@@ -34,7 +34,7 @@ from streamlit_autorefresh import st_autorefresh
 import qrcode
 from PIL import Image
 
-# --- ElevenLabs এবং Lottie সরানো হয়েছে ---
+# --- ElevenLabs এবং Lottie সরানো হয়েছে ---
 
 # ---------------- CONFIG ----------------
 st.set_option('client.showErrorDetails', False)
@@ -51,7 +51,7 @@ st.set_page_config(
 # ------------------------------------------------------------
 OPENAI_API_KEY = st.secrets.get("openai", {}).get("api_key")
 ARC_API_KEY = st.secrets.get("arc", {}).get("api_key")
-# ELEVENLABS_API_KEY সরানো হয়েছে
+# ELEVENLABS_API_KEY সরানো হয়েছে
 
 # ------------------------------------------------------------
 # 🎨 UI POLISH (CSS INJECTION)
@@ -102,7 +102,7 @@ def get_llm():
         llm = ChatOpenAI(model="gpt-3.5-turbo", api_key=OPENAI_API_KEY)
         return llm
 
-# --- ElevenLabs ক্লায়েন্ট সরানো হয়েছে ---
+# --- ElevenLabs ক্লায়েন্ট সরানো হয়েছে ---
 
 try:
     llm = get_llm()
@@ -112,10 +112,10 @@ except Exception as e:
     st.stop()
 
 # ------------------------------------------------------------
-# 🔊 TTS HELPER FUNCTION ( সরানো হয়েছে )
+# 🔊 TTS HELPER FUNCTION ( সরানো হয়েছে )
 # ------------------------------------------------------------
 def play_tts_response(text, key="tts_playback", voice_override=None):
-    """ভয়েস আউটপুট ক্লাউডের জন্য ডিসেবল করা হয়েছে।"""
+    """ভয়েস আউটপুট ক্লাউডের জন্য ডিসেবল করা হয়েছে।"""
     pass # কোনো কিছু না করে সাইলেন্টলি স্কিপ
 
 # ============================================================
@@ -204,7 +204,7 @@ if "mock_balance" not in st.session_state:
     st.session_state["mock_balance"] = 120.0
 if "enable_audit" not in st.session_state:
     st.session_state["enable_audit"] = True
-# if "selected_voice" not in st.session_state: # সরানো হয়েছে
+# if "selected_voice" not in st.session_state: # সরানো হয়েছে
 #     st.session_state["selected_voice"] = "Adam"
 if "processing" not in st.session_state:
     st.session_state["processing"] = False
@@ -336,7 +336,7 @@ with st.sidebar:
     except FileNotFoundError:
         st.warning("assets/team_logo.png not found.")
     
-    st.markdown("---") # অ্যানিমেশন সরানো হয়েছে
+    st.markdown("---") # অ্যানিমেশন সরানো হয়েছে
 
     st.header("🧭 Control Center")
     
@@ -347,7 +347,7 @@ with st.sidebar:
     if not ARC_API_KEY: st.warning("Arc API Key not found.")
     else: st.success("API keys loaded successfully.")
     
-    # if not ELEVENLABS_API_KEY: # সরানো হয়েছে
+    # if not ELEVENLABS_API_KEY: # সরানো হয়েছে
     
     st.toggle("🧪 Simulation Mode", value=st.session_state["simulation_mode"], key="simulation_mode", 
               help="If on, no real API calls will be made.")
@@ -358,7 +358,7 @@ with st.sidebar:
     st.toggle("🛡️ Enable Audit Agent", value=st.session_state["enable_audit"], key="enable_audit",
               help="If disabled, transactions will be approved automatically (DANGEROUS).")
 
-    # --- ভয়েস ল্যাঙ্গুয়েজ সেকশন সরানো হয়েছে ---
+    # --- ভয়েস ল্যাঙ্গুয়েজ সেকশন সরানো হয়েছে ---
     
     st.divider()
     
@@ -409,7 +409,7 @@ tab1, tab2 = st.tabs(["🤖 New Transaction", "📊 Dashboard & History"])
 # --- Tab 1: New Transaction ---
 with tab1:
     
-    # --- ভয়েস ডেমো বাটন সরানো হয়েছে ---
+    # --- ভয়েস ডেমো বাটন সরানো হয়েছে ---
     
     st.markdown("---") 
 
@@ -488,7 +488,7 @@ with tab1:
                     st.session_state["ai_plan"] = None
                     log_transaction("N/A", 0, "failed", "AI Parsing Error")
                 
-                # --- ফিক্স ১: StreamlitAPIException ফিক্স (লাইনটি সরানো হয়েছে) ---
+                # --- ফিক্স ১: StreamlitAPIException ফিক্স (লাইনটি সরানো হয়েছে) ---
                 # if "user_prompt" in st.session_state:
                 #     st.session_state["user_prompt"] = "" 
                 
@@ -506,7 +506,7 @@ with tab1:
             if plan.action == "CHECK_BALANCE":
                 balance_text = check_balance()
                 st.success(f"🤖 AI recognized 'Check Balance': {balance_text}")
-                # play_tts_response(balance_text, key="tts_balance") # সরানো হয়েছে
+                # play_tts_response(balance_text, key="tts_balance") # সরানো হয়েছে
                 st.session_state["ai_plan"] = None
                 st.session_state["audit_result"] = None
 
