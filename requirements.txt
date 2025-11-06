@@ -5,10 +5,9 @@ matplotlib
 langchain-openai
 langchain-core
 pydantic
-streamlit-lottie
-openai
 streamlit-autorefresh
 qrcode
 Pillow
-elevenlabs
-streamlit-speech-to-text
+openai
+streamlit_mic_recorder
+SpeechRecognition
