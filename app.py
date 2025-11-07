@@ -536,7 +536,7 @@ with tab1:
                     elif audit_status == "REJECTED":
                         st.error(f"**Audit Status:** 🚫 **REJECTED (Execution Halted)**\n\n*Auditor's Note: {audit_comment}*")
                     else:
-                        st.error("🛡️ Audit Agent: Could not review the plan. Execution halted.")
+                        st.error("🛡️ Audit Agent: Could not review the plan. Execution Halted.")
                         audit_status = "REJECTED"
 
                 st.dataframe(pd.DataFrame([t.model_dump() for t in plan.transactions]))
