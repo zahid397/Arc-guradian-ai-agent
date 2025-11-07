@@ -23,7 +23,7 @@ import base64 # QR কোডের জন্য
 import traceback # গ্লোবাল এক্সেপশন UI-এর জন্য
 import os # ফাইল পাথ চেকের জন্য
 
-# Mic Recorder (ফ্রি ভয়েসের জন্য SpeechRecognition সহ)
+# Mic Recorder (ফ্রি ভয়েসের জন্য SpeechRecognition সহ)
 from streamlit_mic_recorder import mic_recorder
 import speech_recognition as sr
 import openai # (LLM কলের জন্য এটি থাকবে)
@@ -232,7 +232,7 @@ def transcribe_audio(audio_bytes):
             with sr.AudioFile(audio_file_data) as source:
                 audio_data = recognizer.record(source)
         
-        # গুগল ওয়েব স্পিচ API ব্যবহার করে ট্রান্সক্রাইব করুন (ফ্রি)
+        # গুগল ওয়েব স্পিচ API ব্যবহার করে ট্রান্সক্রাইব করুন (ফ্রি)
         text = recognizer.recognize_google(audio_data)
         return text
     except sr.UnknownValueError:
@@ -447,6 +447,7 @@ with tab1:
                 height=100,
                 label_visibility="collapsed",
                 key="user_prompt",
+                value=st.session_state.user_prompt, # <-- ⭐️⭐️⭐️ এখানে ফিক্স করা হয়েছে ⭐️⭐️⭐️
                 disabled=st.session_state["processing"]
             )
 
