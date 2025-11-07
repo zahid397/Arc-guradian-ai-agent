@@ -2,12 +2,12 @@ streamlit
 requests
 pandas
 matplotlib
+langchain
 langchain-openai
-langchain-core
 pydantic
+streamlit-mic-recorder
+SpeechRecognition
+openai
 streamlit-autorefresh
 qrcode
 Pillow
-openai
-streamlit_mic_recorder
-SpeechRecognition
