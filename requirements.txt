@@ -11,3 +11,4 @@ openai
 streamlit-autorefresh
 qrcode
 Pillow
+google-generativeai
