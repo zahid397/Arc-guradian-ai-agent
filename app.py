@@ -19,7 +19,7 @@ import random
 import time
 import json
 import io
-import base64 # QR কোডের জন্য
+import base64 # QR কোডের জন্য এবং Gemini Voice-এর জন্য
 import traceback # গ্লোবাল এক্সেপশন UI-এর জন্য
 import os # ফাইল পাথ চেকের জন্য
 
@@ -27,6 +27,9 @@ import os # ফাইল পাথ চেকের জন্য
 from streamlit_mic_recorder import mic_recorder
 import speech_recognition as sr
 import openai # (LLM কলের জন্য এটি থাকবে)
+
+# === ⭐️ নতুন ইমপোর্ট (Gemini) ===
+import google.generativeai as genai
 
 # অটো-রিফ্রেশ
 from streamlit_autorefresh import st_autorefresh
@@ -224,7 +227,7 @@ def safe_execute(func, *args, **kwargs):
 
 @st.cache_data(show_spinner=False)
 def transcribe_audio(audio_bytes):
-    """Transcribes audio to text using Google's free speech_recognition library."""
+    """(OLD) Transcribes audio to text using Google's free speech_recognition library."""
     recognizer = sr.Recognizer()
     try:
         # অডিও বাইটসকে অডিও ফাইল হিসাবে লোড করুন
@@ -244,6 +247,35 @@ def transcribe_audio(audio_bytes):
     except Exception as e:
         st.error(f"Voice transcription failed: {e}")
         return ""
+
+# === ⭐️ নতুন Gemini 2.5 Flash Voice Transcription ===
+import base64
+
+def transcribe_with_gemini_flash(audio_bytes):
+    """🎧 Gemini 2.5 Flash Speech-to-Text"""
+    try:
+        # === ⭐️ নিশ্চিত করুন আপনার secrets.toml ফাইলে [gemini] সেকশন আছে ===
+        api_key = st.secrets["gemini"]["api_key"]
+        genai.configure(api_key=api_key)
+
+        model = genai.GenerativeModel("gemini-2.5-flash")
+        audio_b64 = base64.b64encode(audio_bytes).decode("utf-8")
+
+        response = model.generate_content([
+            {"mime_type": "audio/wav", "data": audio_b64},
+            "Transcribe this speech clearly to English text."
+        ])
+
+        text = response.text.strip()
+        if not text:
+            st.warning("⚠️ Gemini didn’t return any text — try speaking a bit louder or clearer.")
+        return text
+
+    except Exception as e:
+        st.error(f"Gemini Speech error: {e}")
+        return ""
+# === ⭐️ নতুন ফাংশন শেষ ===
+
 
 def check_balance():
     """Simulates a dynamic mock balance."""
@@ -356,7 +388,9 @@ with st.sidebar:
     if not ARC_API_KEY: st.warning("Arc API Key not found.")
     else: st.success("API keys loaded successfully.")
     
-    # if not ELEVENLABS_API_KEY: # সরানো হয়েছে
+    # === ⭐️ Gemini Key চেক (ঐচ্ছিক) ===
+    if not st.secrets.get("gemini", {}).get("api_key"):
+        st.error("Gemini API Key not found. Voice will fail.")
     
     st.toggle("🧪 Simulation Mode", value=st.session_state["simulation_mode"], key="simulation_mode", 
               help="If on, no real API calls will be made.")
@@ -436,9 +470,11 @@ with tab1:
             if st.session_state["processing"]:
                 st.warning("Please wait for the current analysis to finish.")
             else:
-                st.success("🎤 Voice captured! Transcribing...")
+                st.success("🎤 Voice captured! Transcribing with Gemini 2.5 Flash...")
                 with st.spinner("Transcribing your voice..."):
-                    st.session_state["user_prompt"] = transcribe_audio(audio['bytes'])
+                    # === ⭐️⭐️⭐️ এখানে পরিবর্তন করা হয়েছে ⭐️⭐️⭐️ ===
+                    st.session_state["user_prompt"] = transcribe_with_gemini_flash(audio["bytes"])
+                    # === ⭐️⭐️⭐️ পরিবর্তন শেষ ⭐️⭐️⭐️ ===
                 st.rerun() # ফিক্স: st.experimental_rerun() -> st.rerun()
 
         with col_text:
@@ -447,7 +483,7 @@ with tab1:
                 height=100,
                 label_visibility="collapsed",
                 key="user_prompt",
-                value=st.session_state.user_prompt, # <-- ⭐️⭐️⭐️ এখানে ফিক্স করা হয়েছে ⭐️⭐️⭐️
+                value=st.session_state.user_prompt, # <-- (এই লাইনটি আগেরবার ফিক্স করা হয়েছিল)
                 disabled=st.session_state["processing"]
             )
 
